@@ -2,10 +2,14 @@ CREATE TABLE members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     phone TEXT,
+    email TEXT,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'member',
     national_id TEXT,
     location TEXT,
+    next_of_kin TEXT,
+    terms_version TEXT,
+    terms_accepted_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE contributions (
