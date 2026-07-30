@@ -26,4 +26,6 @@ func main() {
 		log.Fatal("Failed to create member:", err)
 	}
 	fmt.Println("Created member with ID:", id)
+
+	
 }
