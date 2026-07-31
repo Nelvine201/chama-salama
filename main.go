@@ -21,11 +21,7 @@ func main() {
 	}
 	fmt.Println("Successfully connected to chama.db!")
 
-	id, err := CreateMember(db, "Test User Two", "0700000099", "test1@example.com", "validpassword123", "member")
-	if err != nil {
-		log.Fatal("Failed to create member:", err)
-	}
-	fmt.Println("Created member with ID:", id)
+	startServer(db)
 	
 }
 
