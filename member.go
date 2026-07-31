@@ -18,6 +18,26 @@ func CreateMember(db *sql.DB, name, phone, email, password, role string) (int64,
 		return 0, err
 	}
 
+	if phone != "" {
+		exists, err := phoneExists(db, phone)
+		if err != nil {
+			return 0, err
+		}
+		if exists {
+			return 0, fmt.Errorf("phone number already registered")
+		}
+	}
+
+	if email != "" {
+		exists, err := emailExists(db, email)
+		if err != nil {
+			return 0, err
+		}
+		if exists {
+			return 0, fmt.Errorf("email already registered")
+		}
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return 0, err
@@ -50,4 +70,19 @@ func validateMemberInput(name, phone, email, password string) error {
 	}
 	return nil
 }
-
+func phoneExists(db *sql.DB, phone string) (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM members WHERE phone = ?", phone).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+func emailExists(db *sql.DB, email string) (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM members WHERE email = ?", email).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
