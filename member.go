@@ -114,3 +114,13 @@ func CheckLogin(db *sql.DB, identifier, password string) (*Member, error) {
 
 	return member, nil
 }
+func UpdateProfile(db *sql.DB, memberID int64, nationalID, location, nextOfKin string) error {
+	_, err := db.Exec(
+		"UPDATE members SET national_id = ?, location = ?, next_of_kin = ? WHERE id = ?",
+		nationalID, location, nextOfKin, memberID,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}

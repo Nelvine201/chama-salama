@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 func startServer(db *sql.DB) {
@@ -49,6 +50,33 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Login successful! Welcome,", member.Name)
 	})
+
+	http.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberIDStr := r.FormValue("member_id")
+		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid member ID")
+			return
+		}
+
+		nationalID := r.FormValue("national_id")
+		location := r.FormValue("location")
+		nextOfKin := r.FormValue("next_of_kin")
+
+		err = UpdateProfile(db, memberID, nationalID, location, nextOfKin)
+		if err != nil {
+			fmt.Fprintln(w, "Profile update failed:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Profile updated successfully")
+	})
+
 
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)

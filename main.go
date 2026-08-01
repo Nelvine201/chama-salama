@@ -21,6 +21,7 @@ func main() {
 	}
 	fmt.Println("Successfully connected to chama.db!")
 
+
 	startServer(db)
 	
 }
