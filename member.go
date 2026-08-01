@@ -86,3 +86,31 @@ func emailExists(db *sql.DB, email string) (bool, error) {
 	}
 	return count > 0, nil
 }
+func getMemberByIdentifier(db *sql.DB, identifier string) (*Member, string, error) {
+	var m Member
+	var passwordHash string
+
+	err := db.QueryRow(
+		"SELECT id, name, phone, email, role, password_hash FROM members WHERE phone = ? OR email = ?",
+		identifier, identifier,
+	).Scan(&m.ID, &m.Name, &m.Phone, &m.Email, &m.Role, &passwordHash)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	return &m, passwordHash, nil
+}
+func CheckLogin(db *sql.DB, identifier, password string) (*Member, error) {
+	member, passwordHash, err := getMemberByIdentifier(db, identifier)
+	if err != nil {
+		return nil, fmt.Errorf("invalid credentials")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+	if err != nil {
+		return nil, fmt.Errorf("invalid credentials")
+	}
+
+	return member, nil
+}
