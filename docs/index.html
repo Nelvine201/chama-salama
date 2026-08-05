@@ -132,7 +132,56 @@
       text-decoration: none;
       font-weight: bold;
       margin-top: 16px;
+    }.hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+      padding: 80px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
     }
+
+    .hero-text {
+      max-width: 550px;
+    }
+
+    .hero-heading {
+      font-size: 42px;
+      line-height: 1.15;
+      color: #1f5c3d;
+      margin-bottom: 20px;
+    }
+
+    .hero-heading .highlight {
+      color: #c96f4a;
+    }
+
+    .hero-lead {
+      color: #555;
+      font-size: 16px;
+      margin-bottom: 28px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .hero-buttons .btn-solid {
+      background: #1f5c3d;
+      color: #fbf8f1;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .hero-buttons .btn-ghost {
+      background: transparent;
+      color: #26241f;
+      border: 1px solid #ddd;
+      padding: 12px 24px;
 
   </style>
 </head>
@@ -152,7 +201,7 @@
       <a href="#">Sign up</a>
     </nav>
   </header>
-  
+
   <section class="hero">
     <div class="hero-text">
       <h1 class="hero-heading">
@@ -205,10 +254,6 @@
     <p>Free to use. Built for groups, not for banks.</p>
     <a href="#" class="btn-solid">Create your chama's account</a>
   </section>
-  <main>
-    <h2>Track your chama's contributions, payouts, and withdrawals — even offline.</h2>
-    <p>Built for Kenyan savings groups. Works without internet, syncs when you're back online.</p>
-  </main>
   <footer>
     <p>&copy; 2026 Chama Salama</p>
     <a href="terms.html">Terms and conditions</a>
