@@ -13,10 +13,15 @@ type Member struct {
 	Email string
 	Role string
 }
-func CreateMember(db *sql.DB, name, phone, email, password, role string) (int64, error) {
+func CreateMember(db *sql.DB, name, phone, email, password, role string, termsAccepted bool,) (int64, error) {
 	if err := validateMemberInput(name, phone, email, password); err != nil {
 		return 0, err
 	}
+
+	if !termsAccepted {
+		return 0, fmt.Errorf("you must accept the terms and conditions to register")
+	}
+
 
 	if phone != "" {
 		exists, err := phoneExists(db, phone)
@@ -43,9 +48,11 @@ func CreateMember(db *sql.DB, name, phone, email, password, role string) (int64,
 		return 0, err
 	}
 
+	const currentTermsVersion = "v1"
+
 	result, err := db.Exec(
-		"INSERT INTO members (name, phone, email, password_hash, role) VALUES (?, ?, ?, ?, ?)",
-		name, phone, email, string(hashedPassword), role,
+		"INSERT INTO members (name, phone, email, password_hash, role, terms_version, terms_accepted_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+		name, phone, email, string(hashedPassword), role, currentTermsVersion,
 	)
 	if err != nil {
 		return 0, err

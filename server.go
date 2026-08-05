@@ -23,8 +23,9 @@ func startServer(db *sql.DB) {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 		role := "member"
+		termsAccepted := r.FormValue("terms_accepted") == "true"
 
-		id, err := CreateMember(db, name, phone, email, password, role)
+		id, err := CreateMember(db, name, phone, email, password, role, termsAccepted)
 		if err != nil {
 			fmt.Fprintln(w, "Registration failed:", err)
 			return
