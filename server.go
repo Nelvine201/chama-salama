@@ -108,6 +108,46 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Contribution recorded successfully! ID:", id)
 	})
+	http.HandleFunc("/contribute-offline", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberIDStr := r.FormValue("member_id")
+		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid member ID")
+			return
+		}
+
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		paidOn := r.FormValue("paid_on")
+		source := r.FormValue("source")
+
+		id, err := RecordContributionOffline(db, memberID, amount, paidOn, source)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to record contribution:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Contribution saved offline (pending sync). ID:", id)
+	})
+
+	http.HandleFunc("/sync", func(w http.ResponseWriter, r *http.Request) {
+		count, err := ProcessSyncQueue(db)
+		if err != nil {
+			fmt.Fprintln(w, "Sync failed:", err)
+			return
+		}
+		fmt.Fprintln(w, "Sync complete. Contributions synced:", count)
+	})
 
 
 	fmt.Println("Server starting on http://localhost:8080")
