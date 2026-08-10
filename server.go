@@ -77,6 +77,37 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Profile updated successfully")
 	})
+	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberIDStr := r.FormValue("member_id")
+		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid member ID")
+			return
+		}
+
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		paidOn := r.FormValue("paid_on")
+		source := r.FormValue("source")
+
+		id, err := RecordContribution(db, memberID, amount, paidOn, source)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to record contribution:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Contribution recorded successfully! ID:", id)
+	})
 
 
 	fmt.Println("Server starting on http://localhost:8080")
