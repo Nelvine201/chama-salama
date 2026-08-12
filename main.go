@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	
 	db, err := sql.Open("sqlite", "chama.db")
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
