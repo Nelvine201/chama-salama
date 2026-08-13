@@ -6,7 +6,19 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
+
+const (
+	darajaShortcode = "174379"
+	darajaPasskey   = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+)
+func generateStkPassword() (string, string) {
+	timestamp := time.Now().Format("20060102150405")
+	raw := darajaShortcode + darajaPasskey + timestamp
+	password := base64.StdEncoding.EncodeToString([]byte(raw))
+	return password, timestamp
+}
 
 func getDarajaCredentials() (string, string) {
 	consumerKey := os.Getenv("DARAJA_CONSUMER_KEY")
