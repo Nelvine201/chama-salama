@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"io"
 )
 
 func startServer(db *sql.DB) {
@@ -147,6 +148,20 @@ func startServer(db *sql.DB) {
 			return
 		}
 		fmt.Fprintln(w, "Sync complete. Contributions synced:", count)
+	})
+
+	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to read callback")
+			return
+		}
+		defer r.Body.Close()
+
+		fmt.Println("Received Daraja callback:")
+		fmt.Println(string(body))
+
+		fmt.Fprintln(w, "Callback received")
 	})
 
 
