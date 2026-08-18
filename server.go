@@ -192,7 +192,46 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "STK push response:", result)
 	})
+	http.HandleFunc("/admin/set-settings", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
 
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		frequency := r.FormValue("frequency")
+
+		err = SetGroupSettings(db, amount, frequency)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to set group settings:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Group settings updated successfully")
+	})
+
+	http.HandleFunc("/admin/settings", func(w http.ResponseWriter, r *http.Request) {
+		settings, err := GetGroupSettings(db)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to get group settings:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Contribution amount:", settings.ContributionAmount)
+		fmt.Fprintln(w, "Frequency:", settings.Frequency)
+
+		if settings.PayoutOrder.Valid {
+			fmt.Fprintln(w, "Payout order:", settings.PayoutOrder.String)
+		} else {
+			fmt.Fprintln(w, "Payout order: not set yet")
+		}
+	})
 
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
