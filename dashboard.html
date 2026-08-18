@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chama Salama — Dashboard</title>
+</head>
+<body>
+  <h1>Chama Salama Dashboard</h1>
+
+  <p>Group balance: {{.Balance}}</p>
+  <p>Contribution amount: {{.Amount}}</p>
+  <p>Frequency: {{.Frequency}}</p>
+
+  <h2>Recent contributions</h2>
+  <ul>
+    {{range .Contributions}}
+    <li>{{.MemberName}} — {{.Amount}} — {{.PaidOn}} — {{.Status}}</li>
+    {{end}}
+  </ul>
+</body>
+</html>

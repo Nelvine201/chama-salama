@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"io"
+	"html/template"
 )
 
 func startServer(db *sql.DB) {
@@ -242,6 +243,40 @@ func startServer(db *sql.DB) {
 		for _, m := range members {
 			fmt.Fprintln(w, m.ID, m.Name, m.Phone, m.Email, m.Role)
 		}
+	})
+	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		balance, err := GetGroupBalance(db)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load dashboard:", err)
+			return
+		}
+
+		settings, err := GetGroupSettings(db)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load group settings:", err)
+			return
+		}
+
+		contributions, err := GetRecentContributions(db, 10)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load contributions:", err)
+			return
+		}
+
+		data := struct {
+			Balance       float64
+			Frequency     string
+			Amount        float64
+			Contributions []ContributionWithMember
+		}{
+			Balance:       balance,
+			Frequency:     settings.Frequency,
+			Amount:        settings.ContributionAmount,
+			Contributions: contributions,
+		}
+
+		tmpl := template.Must(template.ParseFiles("dashboard.html"))
+		tmpl.Execute(w, data)
 	})
 
 	fmt.Println("Server starting on http://localhost:8080")
