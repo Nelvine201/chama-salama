@@ -108,6 +108,25 @@ func getMemberByIdentifier(db *sql.DB, identifier string) (*Member, string, erro
 
 	return &m, passwordHash, nil
 }
+func GetAllMembers(db *sql.DB) ([]Member, error) {
+	rows, err := db.Query("SELECT id, name, phone, email, role FROM members")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []Member
+	for rows.Next() {
+		var m Member
+		err := rows.Scan(&m.ID, &m.Name, &m.Phone, &m.Email, &m.Role)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+
+	return members, nil
+}
 func CheckLogin(db *sql.DB, identifier, password string) (*Member, error) {
 	member, passwordHash, err := getMemberByIdentifier(db, identifier)
 	if err != nil {
