@@ -11,6 +11,7 @@ type Contribution struct {
 	PaidOn   string
 	Source   string
 	Status   string
+	
 }
 func RecordContribution(db *sql.DB, memberID int64, amount float64, paidOn, source string) (int64,error) {
 	if amount <= 0 {
@@ -101,4 +102,48 @@ func ProcessSyncQueue(db *sql.DB) (int, error) {
 
 	return synced, nil
 }
+func GetGroupBalance(db *sql.DB) (float64, error) {
+	var total float64
+	err := db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE status = 'synced'").Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+type ContributionWithMember struct {
+	ID         int64
+	MemberName string
+	Amount     float64
+	PaidOn     string
+	Status     string
+}
+
+func GetRecentContributions(db *sql.DB, limit int) ([]ContributionWithMember, error) {
+	rows, err := db.Query(
+		`SELECT c.id, m.name, c.amount, c.paid_on, c.status
+		 FROM contributions c
+		 JOIN members m ON c.member_id = m.id
+		 ORDER BY c.id DESC
+		 LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []ContributionWithMember
+	for rows.Next() {
+		var c ContributionWithMember
+		err := rows.Scan(&c.ID, &c.MemberName, &c.Amount, &c.PaidOn, &c.Status)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, c)
+	}
+
+	return results, nil
+}
+
 
