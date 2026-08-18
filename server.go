@@ -163,6 +163,35 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Callback received")
 	})
+	http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		phone := r.FormValue("phone")
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.Atoi(amountStr)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		consumerKey, consumerSecret := getDarajaCredentials()
+		token, err := getAccessToken(consumerKey, consumerSecret)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to get access token:", err)
+			return
+		}
+
+		result, err := sendStkPush(token, phone, amount)
+		if err != nil {
+			fmt.Fprintln(w, "STK push failed:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "STK push response:", result)
+	})
 
 
 	fmt.Println("Server starting on http://localhost:8080")

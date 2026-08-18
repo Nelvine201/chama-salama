@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"bytes"
 )
 
 const (
@@ -59,6 +60,50 @@ func getAccessToken(consumerKey, consumerSecret string) (string, error) {
 	}
 
 	return result.AccessToken, nil
+}
+func sendStkPush(accessToken, phone string, amount int) (string, error) {
+	password, timestamp := generateStkPassword()
+
+	payload := map[string]interface{}{
+		"BusinessShortCode": darajaShortcode,
+		"Password":          password,
+		"Timestamp":         timestamp,
+		"TransactionType":   "CustomerPayBillOnline",
+		"Amount":            amount,
+		"PartyA":            phone,
+		"PartyB":            darajaShortcode,
+		"PhoneNumber":       phone,
+		"CallBackURL":       "https://handcart-latitude-decompose.ngrok-free.dev/callback",
+		"AccountReference":  "ChamaSalama",
+		"TransactionDesc":   "Chama contribution",
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	url := "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(respBody), nil
 }
 
 	
