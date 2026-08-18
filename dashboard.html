@@ -3,19 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <title>Chama Salama — Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      color: #26241f;
+      background-color: #fbf8f1;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      padding: 20px 40px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    header svg {
+      margin-right: 10px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      color: #1f5c3d;
+      margin: 0;
+    }
+
+    main {
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: #f4efe2;
+      border-radius: 10px;
+      padding: 20px;
+      flex: 1;
+    }
+
+    .stat-card p.label {
+      font-size: 13px;
+      color: #555;
+      margin: 0 0 6px;
+    }
+
+    .stat-card p.value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1f5c3d;
+      margin: 0;
+    }
+
+    h2 {
+      color: #1f5c3d;
+      font-size: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    .status-synced {
+      color: #2f7a52;
+      font-weight: bold;
+    }
+
+    .status-pending {
+      color: #c96f4a;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Chama Salama Dashboard</h1>
+  <header>
+    <svg width="28" height="28" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
+      <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
+      <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
+      <circle cx="50" cy="42" r="4" fill="#e6c258"/>
+    </svg>
+    <h1>Chama Salama</h1>
+  </header>
 
-  <p>Group balance: {{.Balance}}</p>
-  <p>Contribution amount: {{.Amount}}</p>
-  <p>Frequency: {{.Frequency}}</p>
+  <main>
+    <div class="stats">
+      <div class="stat-card">
+        <p class="label">Group balance</p>
+        <p class="value">KES {{.Balance}}</p>
+      </div>
+      <div class="stat-card">
+        <p class="label">Contribution amount</p>
+        <p class="value">KES {{.Amount}}</p>
+      </div>
+      <div class="stat-card">
+        <p class="label">Frequency</p>
+        <p class="value">{{.Frequency}}</p>
+      </div>
+    </div>
 
-  <h2>Recent contributions</h2>
-  <ul>
-    {{range .Contributions}}
-    <li>{{.MemberName}} — {{.Amount}} — {{.PaidOn}} — {{.Status}}</li>
-    {{end}}
-  </ul>
+    <h2>Recent contributions</h2>
+    <table>
+      <tr>
+        <th>Member</th>
+        <th>Amount</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+      {{range .Contributions}}
+      <tr>
+        <td>{{.MemberName}}</td>
+        <td>KES {{.Amount}}</td>
+        <td>{{.PaidOn}}</td>
+        <td class="status-{{.Status}}">{{.Status}}</td>
+      </tr>
+      {{end}}
+    </table>
+  </main>
 </body>
 </html>
