@@ -232,6 +232,17 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "Payout order: not set yet")
 		}
 	})
+		http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
+		members, err := GetAllMembers(db)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to get members:", err)
+			return
+		}
+
+		for _, m := range members {
+			fmt.Fprintln(w, m.ID, m.Name, m.Phone, m.Email, m.Role)
+		}
+	})
 
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
