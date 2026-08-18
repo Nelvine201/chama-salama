@@ -278,6 +278,69 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
 		tmpl.Execute(w, data)
 	})
+		http.HandleFunc("/withdraw/request", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		requestedByStr := r.FormValue("requested_by")
+		requestedBy, err := strconv.ParseInt(requestedByStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid member ID")
+			return
+		}
+
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		reason := r.FormValue("reason")
+
+		id, err := CreateWithdrawal(db, requestedBy, amount, reason)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to create withdrawal request:", err)
+			return
+		}
+
+		fmt.Fprintln(w, "Withdrawal request created. ID:", id)
+	})
+
+	http.HandleFunc("/withdraw/approve", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		withdrawalIDStr := r.FormValue("withdrawal_id")
+		withdrawalID, err := strconv.ParseInt(withdrawalIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid withdrawal ID")
+			return
+		}
+
+		memberIDStr := r.FormValue("member_id")
+		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid member ID")
+			return
+		}
+
+		fullyApproved, err := ApproveWithdrawal(db, withdrawalID, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Approval failed:", err)
+			return
+		}
+
+		if fullyApproved {
+			fmt.Fprintln(w, "Approval recorded. Withdrawal is now fully approved!")
+		} else {
+			fmt.Fprintln(w, "Approval recorded. Waiting for more signatures.")
+		}
+	})
 
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
