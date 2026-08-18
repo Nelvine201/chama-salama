@@ -4,8 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-
-	_ "modernc.org/sqlite"
+	_"modernc.org/sqlite"
 )
 
 func main() {
@@ -28,7 +27,7 @@ func main() {
 	}
 	fmt.Println("Successfully connected to chama.db!")
 
-
+	
 	startServer(db)
 	
 }
