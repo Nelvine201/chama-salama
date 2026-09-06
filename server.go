@@ -3,10 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
+	"io"
 	"net/http"
 	"strconv"
-	"io"
-	"html/template"
 )
 
 func startServer(db *sql.DB) {
@@ -35,7 +35,6 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Registered successfully! Member ID:", id)
 	})
-
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
@@ -50,6 +49,19 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "Login failed:", err)
 			return
 		}
+
+		token, err := createSession(db, member.ID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to create session:", err)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    token,
+			HttpOnly: true,
+			Path:     "/",
+		})
 
 		fmt.Fprintln(w, "Login successful! Welcome,", member.Name)
 	})
@@ -233,7 +245,7 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "Payout order: not set yet")
 		}
 	})
-		http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
 		members, err := GetAllMembers(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get members:", err)
@@ -278,7 +290,7 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
 		tmpl.Execute(w, data)
 	})
-		http.HandleFunc("/withdraw/request", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/withdraw/request", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
