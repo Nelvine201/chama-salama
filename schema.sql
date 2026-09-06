@@ -53,3 +53,9 @@ CREATE TABLE withdrawal_approvals (
     FOREIGN KEY (withdrawal_id) REFERENCES withdrawals(id),
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    member_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);
