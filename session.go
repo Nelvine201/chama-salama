@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
+	"net/http"
 )
 
 func generateSessionToken() (string, error) {
@@ -29,5 +31,30 @@ func createSession(db *sql.DB, memberID int64) (string, error) {
 	}
 
 	return token, nil
+}
+func getMemberBySession(db *sql.DB, token string) (int64, error) {
+	var memberID int64
+	err := db.QueryRow(
+		"SELECT member_id FROM sessions WHERE id = ?",
+		token,
+	).Scan(&memberID)
+	if err != nil {
+		return 0, err
+	}
+	return memberID, nil
+}
+
+func getLoggedInMemberID(r *http.Request, db *sql.DB) (int64, error) {
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		return 0, fmt.Errorf("not logged in")
+	}
+
+	memberID, err := getMemberBySession(db, cookie.Value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid or expired session")
+	}
+
+	return memberID, nil
 }
 
