@@ -22,6 +22,7 @@ func main() {
 	defer db.Close()
 
 	err = db.Ping()
+	
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -31,4 +32,5 @@ func main() {
 	startServer(db)
 	
 }
+
 

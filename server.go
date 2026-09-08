@@ -257,6 +257,12 @@ func startServer(db *sql.DB) {
 		}
 	})
 	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			fmt.Fprintln(w, "Please log in to view the dashboard")
+			return
+		}
+
 		balance, err := GetGroupBalance(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to load dashboard:", err)
