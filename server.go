@@ -14,6 +14,11 @@ func startServer(db *sql.DB) {
 		fmt.Fprintln(w, "Chama Salama server is running")
 	})
 
+	http.HandleFunc("/register-page", func(w http.ResponseWriter, r *http.Request) {
+		tmpl := template.Must(template.ParseFiles("register.html"))
+		tmpl.Execute(w, nil)
+	})
+
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
