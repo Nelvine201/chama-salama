@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chama Salama — Sign in</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      color: #26241f;
+      background-color: #fbf8f1;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      padding: 20px 40px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    header svg { margin-right: 10px; }
+
+    header h1 {
+      font-size: 20px;
+      color: #1f5c3d;
+      margin: 0;
+    }
+
+    main {
+      max-width: 380px;
+      margin: 60px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #f4efe2;
+      border-radius: 10px;
+      padding: 24px;
+    }
+
+    .card h2 {
+      color: #1f5c3d;
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 4px;
+      margin-top: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 10px;
+      background: #1f5c3d;
+      color: #fbf8f1;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .message {
+      margin-top: 14px;
+      font-size: 14px;
+      color: #c96f4a;
+    }
+
+    a { color: #2f7a52; }
+  </style>
+</head>
+<body>
+  <header>
+    <svg width="28" height="28" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
+      <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
+      <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
+      <circle cx="50" cy="42" r="4" fill="#e6c258"/>
+    </svg>
+    <h1>Chama Salama</h1>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Sign in</h2>
+      <form action="/login" method="POST">
+        <label>Phone or email</label>
+        <input type="text" name="identifier" required>
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Sign in</button>
+      </form>
+      {{if .Message}}
+      <p class="message">{{.Message}}</p>
+      {{end}}
+      <p style="margin-top: 16px; font-size: 13px;">Don't have an account? <a href="/register-page">Create one</a></p>
+    </div>
+  </main>
+</body>
+</html>

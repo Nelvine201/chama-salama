@@ -40,6 +40,10 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Registered successfully! Member ID:", id)
 	})
+	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
+		tmpl := template.Must(template.ParseFiles("login.html"))
+		tmpl.Execute(w, nil)
+	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
