@@ -71,8 +71,18 @@ func startServer(db *sql.DB) {
 			HttpOnly: true,
 			Path:     "/",
 		})
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	
+	})
 
-		fmt.Fprintln(w, "Login successful! Welcome,", member.Name)
+	http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("profile.html"))
+		tmpl.Execute(w, nil)
 	})
 
 	http.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) {
@@ -81,10 +91,9 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		memberIDStr := r.FormValue("member_id")
-		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			fmt.Fprintln(w, "Invalid member ID")
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
 
@@ -98,38 +107,7 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		fmt.Fprintln(w, "Profile updated successfully")
-	})
-	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			fmt.Fprintln(w, "Please submit this form using POST")
-			return
-		}
-
-		memberIDStr := r.FormValue("member_id")
-		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid member ID")
-			return
-		}
-
-		amountStr := r.FormValue("amount")
-		amount, err := strconv.ParseFloat(amountStr, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid amount")
-			return
-		}
-
-		paidOn := r.FormValue("paid_on")
-		source := r.FormValue("source")
-
-		id, err := RecordContribution(db, memberID, amount, paidOn, source)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to record contribution:", err)
-			return
-		}
-
-		fmt.Fprintln(w, "Contribution recorded successfully! ID:", id)
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 	http.HandleFunc("/contribute-offline", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
