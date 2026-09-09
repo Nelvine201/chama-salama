@@ -109,6 +109,51 @@ func startServer(db *sql.DB) {
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
+
+
+
+
+
+		http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("contribute.html"))
+		tmpl.Execute(w, nil)
+	})
+
+	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		amountStr := r.FormValue("amount")
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid amount")
+			return
+		}
+
+		paidOn := r.FormValue("paid_on")
+		source := r.FormValue("source")
+
+		_, err = RecordContribution(db, memberID, amount, paidOn, source)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to record contribution:", err)
+			return
+		}
+
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	})
 	http.HandleFunc("/contribute-offline", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
