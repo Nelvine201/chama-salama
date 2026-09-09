@@ -328,16 +328,25 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
 		tmpl.Execute(w, data)
 	})
+		http.HandleFunc("/withdraw/request-page", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("withdraw-request.html"))
+		tmpl.Execute(w, nil)
+	})
+
 	http.HandleFunc("/withdraw/request", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
 		}
 
-		requestedByStr := r.FormValue("requested_by")
-		requestedBy, err := strconv.ParseInt(requestedByStr, 10, 64)
+		requestedBy, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			fmt.Fprintln(w, "Invalid member ID")
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
 
@@ -350,13 +359,23 @@ func startServer(db *sql.DB) {
 
 		reason := r.FormValue("reason")
 
-		id, err := CreateWithdrawal(db, requestedBy, amount, reason)
+		_, err = CreateWithdrawal(db, requestedBy, amount, reason)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to create withdrawal request:", err)
 			return
 		}
 
-		fmt.Fprintln(w, "Withdrawal request created. ID:", id)
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	})
+
+		http.HandleFunc("/withdraw/approve-page", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("withdraw-approve.html"))
+		tmpl.Execute(w, nil)
 	})
 
 	http.HandleFunc("/withdraw/approve", func(w http.ResponseWriter, r *http.Request) {
@@ -365,17 +384,16 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
 		withdrawalIDStr := r.FormValue("withdrawal_id")
 		withdrawalID, err := strconv.ParseInt(withdrawalIDStr, 10, 64)
 		if err != nil {
 			fmt.Fprintln(w, "Invalid withdrawal ID")
-			return
-		}
-
-		memberIDStr := r.FormValue("member_id")
-		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid member ID")
 			return
 		}
 
