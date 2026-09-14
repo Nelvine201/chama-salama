@@ -10,9 +10,8 @@ import (
 )
 
 func startServer(db *sql.DB) {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Chama Salama server is running")
-	})
+		http.Handle("/", http.FileServer(http.Dir("docs")))
+	
 
 	http.HandleFunc("/register-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("register.html"))
