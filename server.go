@@ -17,7 +17,6 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("register.html"))
 		tmpl.Execute(w, nil)
 	})
-
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
@@ -31,13 +30,13 @@ func startServer(db *sql.DB) {
 		role := "member"
 		termsAccepted := r.FormValue("terms_accepted") == "true"
 
-		id, err := CreateMember(db, name, phone, email, password, role, termsAccepted)
+		_, err := CreateMember(db, name, phone, email, password, role, termsAccepted)
 		if err != nil {
 			fmt.Fprintln(w, "Registration failed:", err)
 			return
 		}
 
-		fmt.Fprintln(w, "Registered successfully! Member ID:", id)
+				http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 	})
 	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("login.html"))
