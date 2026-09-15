@@ -74,14 +74,40 @@ func startServer(db *sql.DB) {
 	
 	})
 
-	http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+
+		profile, err := GetMemberProfile(db, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load profile:", err)
+			return
+		}
+
+		saved := profile.NationalID.Valid && profile.NationalID.String != ""
+		editing := r.URL.Query().Get("edit") == "true"
+
+		data := struct {
+			Saved      bool
+			Editing    bool
+			Name       string
+			NationalID string
+			Location   string
+			NextOfKin  string
+		}{
+			Saved:      saved,
+			Editing:    editing,
+			Name:       profile.Name,
+			NationalID: profile.NationalID.String,
+			Location:   profile.Location.String,
+			NextOfKin:  profile.NextOfKin.String,
+		}
+
 		tmpl := template.Must(template.ParseFiles("profile.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, data)
 	})
 
 	http.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) {
