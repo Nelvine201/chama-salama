@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func startServer(db *sql.DB) {
@@ -69,7 +70,7 @@ func startServer(db *sql.DB) {
 			HttpOnly: true,
 			Path:     "/",
 		})
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	
 	})
 
@@ -107,11 +108,6 @@ func startServer(db *sql.DB) {
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
-
-
-
-
-
 		http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
 		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
@@ -286,12 +282,20 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, m.ID, m.Name, m.Phone, m.Email, m.Role)
 		}
 	})
-	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			fmt.Fprintln(w, "Please log in to view the dashboard")
 			return
 		}
+
+		profile, err := GetMemberProfile(db, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load profile:", err)
+			return
+		}
+
+		firstName := strings.Fields(profile.Name)[0]
 
 		balance, err := GetGroupBalance(db)
 		if err != nil {
@@ -312,11 +316,13 @@ func startServer(db *sql.DB) {
 		}
 
 		data := struct {
+			FirstName     string
 			Balance       float64
 			Frequency     string
 			Amount        float64
 			Contributions []ContributionWithMember
 		}{
+			FirstName:     firstName,
 			Balance:       balance,
 			Frequency:     settings.Frequency,
 			Amount:        settings.ContributionAmount,
@@ -326,7 +332,7 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
 		tmpl.Execute(w, data)
 	})
-		http.HandleFunc("/withdraw/request-page", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/withdraw/request-page", func(w http.ResponseWriter, r *http.Request) {
 		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)

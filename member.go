@@ -150,3 +150,21 @@ func UpdateProfile(db *sql.DB, memberID int64, nationalID, location, nextOfKin s
 	}
 	return nil
 }
+type MemberProfile struct {
+	Name       string
+	NationalID sql.NullString
+	Location   sql.NullString
+	NextOfKin  sql.NullString
+}
+
+func GetMemberProfile(db *sql.DB, memberID int64) (*MemberProfile, error) {
+	var p MemberProfile
+	err := db.QueryRow(
+		"SELECT name, national_id, location, next_of_kin FROM members WHERE id = ?",
+		memberID,
+	).Scan(&p.Name, &p.NationalID, &p.Location, &p.NextOfKin)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
