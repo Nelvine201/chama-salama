@@ -57,4 +57,7 @@ func getLoggedInMemberID(r *http.Request, db *sql.DB) (int64, error) {
 
 	return memberID, nil
 }
-
+func deleteSession(db *sql.DB, token string) error {
+	_, err := db.Exec("DELETE FROM sessions WHERE id = ?", token)
+	return err
+}

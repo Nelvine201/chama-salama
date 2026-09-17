@@ -155,12 +155,24 @@
       </div>
       <a href="/dashboard" class="active">Dashboard</a>
       <a href="/contribute-page">Contribute</a>
-      <a href="/profile-page">Profile</a>
       <a href="/withdraw/request-page">Request Withdrawal</a>
       <a href="/withdraw/approve-page">Approve Withdrawal</a>
     </nav>
 
     <main>
+      <div style="display: flex; justify-content: flex-end; position: relative; margin-bottom: 10px;">
+        <div id="avatarButton" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 8px;" onclick="toggleAvatarMenu()">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #1f5c3d; color: #f4efe2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold;">
+            {{slice .FirstName 0 1}}
+          </div>
+          <span style="font-size: 14px; color: #1f5c3d; font-weight: bold;">{{.FirstName}}</span>
+        </div>
+        <div id="avatarMenu" style="display: none; position: absolute; top: 42px; right: 0; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); min-width: 160px; overflow: hidden; z-index: 10;">
+          <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">My Profile</a>
+          <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">Account Settings</a>
+          <a href="/logout" style="display: block; padding: 10px 16px; font-size: 14px; color: #c96f4a; text-decoration: none; border-top: 1px solid #eee;">Logout</a>
+        </div>
+      </div>
             <h1>Welcome, {{.FirstName}}!</h1>
       <p style="color: #555; margin-top: -18px; margin-bottom: 30px;">Track your savings and merry-go-round.</p>
 
@@ -204,5 +216,19 @@
       </div>
     </main>
   </div>
+
+    <script>
+    function toggleAvatarMenu() {
+      const menu = document.getElementById('avatarMenu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', function(event) {
+      const button = document.getElementById('avatarButton');
+      const menu = document.getElementById('avatarMenu');
+      if (!button.contains(event.target)) {
+        menu.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>

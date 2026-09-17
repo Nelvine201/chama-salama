@@ -11,8 +11,7 @@ import (
 )
 
 func startServer(db *sql.DB) {
-		http.Handle("/", http.FileServer(http.Dir("docs")))
-	
+	http.Handle("/", http.FileServer(http.Dir("docs")))
 
 	http.HandleFunc("/register-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("register.html"))
@@ -37,7 +36,7 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-				http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+		http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 	})
 	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("login.html"))
@@ -70,8 +69,22 @@ func startServer(db *sql.DB) {
 			HttpOnly: true,
 			Path:     "/",
 		})
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-	
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+
+	})
+	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err == nil {
+			deleteSession(db, cookie.Value)
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    "",
+			HttpOnly: true,
+			Path:     "/",
+			MaxAge:   -1,
+		})
+		http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 	})
 	http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
@@ -155,7 +168,7 @@ func startServer(db *sql.DB) {
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
-		http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
 		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
@@ -329,7 +342,7 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, m.ID, m.Name, m.Phone, m.Email, m.Role)
 		}
 	})
-		http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			fmt.Fprintln(w, "Please log in to view the dashboard")
@@ -419,7 +432,7 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 
-		http.HandleFunc("/withdraw/approve-page", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/withdraw/approve-page", func(w http.ResponseWriter, r *http.Request) {
 		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
