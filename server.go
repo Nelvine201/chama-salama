@@ -73,8 +73,7 @@ func startServer(db *sql.DB) {
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	
 	})
-
-		http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
@@ -91,19 +90,33 @@ func startServer(db *sql.DB) {
 		editing := r.URL.Query().Get("edit") == "true"
 
 		data := struct {
-			Saved      bool
-			Editing    bool
-			Name       string
-			NationalID string
-			Location   string
-			NextOfKin  string
+			Saved                 bool
+			Editing               bool
+			Name                  string
+			PreferredFirstName    string
+			NationalID            string
+			Location              string
+			NextOfKin             string
+			NextOfKinRelationship string
+			NextOfKinIDNumber     string
+			NextOfKinPhone        string
+			DefaultPayoutMethod   string
+			NotifySMS             bool
+			NotifyEmail           bool
 		}{
-			Saved:      saved,
-			Editing:    editing,
-			Name:       profile.Name,
-			NationalID: profile.NationalID.String,
-			Location:   profile.Location.String,
-			NextOfKin:  profile.NextOfKin.String,
+			Saved:                 saved,
+			Editing:               editing,
+			Name:                  profile.Name,
+			PreferredFirstName:    profile.PreferredFirstName.String,
+			NationalID:            profile.NationalID.String,
+			Location:              profile.Location.String,
+			NextOfKin:             profile.NextOfKin.String,
+			NextOfKinRelationship: profile.NextOfKinRelationship.String,
+			NextOfKinIDNumber:     profile.NextOfKinIDNumber.String,
+			NextOfKinPhone:        profile.NextOfKinPhone.String,
+			DefaultPayoutMethod:   profile.DefaultPayoutMethod.String,
+			NotifySMS:             profile.NotifySMS,
+			NotifyEmail:           profile.NotifyEmail,
 		}
 
 		tmpl := template.Must(template.ParseFiles("profile.html"))
@@ -125,8 +138,16 @@ func startServer(db *sql.DB) {
 		nationalID := r.FormValue("national_id")
 		location := r.FormValue("location")
 		nextOfKin := r.FormValue("next_of_kin")
+		nextOfKinRelationship := r.FormValue("next_of_kin_relationship")
+		nextOfKinIDNumber := r.FormValue("next_of_kin_id_number")
+		nextOfKinPhone := r.FormValue("next_of_kin_phone")
+		preferredFirstName := r.FormValue("preferred_first_name")
+		defaultPayoutMethod := r.FormValue("default_payout_method")
+		notifySMS := r.FormValue("notify_sms") == "true"
+		notifyEmail := r.FormValue("notify_email") == "true"
 
-		err = UpdateProfile(db, memberID, nationalID, location, nextOfKin)
+		err = UpdateProfile(db, memberID, nationalID, location, nextOfKin, nextOfKinRelationship,
+			nextOfKinIDNumber, nextOfKinPhone, preferredFirstName, defaultPayoutMethod, notifySMS, notifyEmail)
 		if err != nil {
 			fmt.Fprintln(w, "Profile update failed:", err)
 			return

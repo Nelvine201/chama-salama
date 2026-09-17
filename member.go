@@ -140,31 +140,47 @@ func CheckLogin(db *sql.DB, identifier, password string) (*Member, error) {
 
 	return member, nil
 }
-func UpdateProfile(db *sql.DB, memberID int64, nationalID, location, nextOfKin string) error {
-	_, err := db.Exec(
-		"UPDATE members SET national_id = ?, location = ?, next_of_kin = ? WHERE id = ?",
-		nationalID, location, nextOfKin, memberID,
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 type MemberProfile struct {
-	Name       string
-	NationalID sql.NullString
-	Location   sql.NullString
-	NextOfKin  sql.NullString
+	Name                  string
+	PreferredFirstName    sql.NullString
+	AvatarURL             sql.NullString
+	Phone                 sql.NullString
+	Email                 sql.NullString
+	NationalID            sql.NullString
+	Location              sql.NullString
+	DefaultPayoutMethod   sql.NullString
+	NextOfKin             sql.NullString
+	NextOfKinRelationship sql.NullString
+	NextOfKinIDNumber     sql.NullString
+	NextOfKinPhone        sql.NullString
+	NotifySMS             bool
+	NotifyEmail           bool
 }
 
 func GetMemberProfile(db *sql.DB, memberID int64) (*MemberProfile, error) {
 	var p MemberProfile
 	err := db.QueryRow(
-		"SELECT name, national_id, location, next_of_kin FROM members WHERE id = ?",
+		`SELECT name, preferred_first_name, avatar_url, phone, email, national_id, location,
+		 default_payout_method, next_of_kin, next_of_kin_relationship, next_of_kin_id_number,
+		 next_of_kin_phone, notify_sms, notify_email
+		 FROM members WHERE id = ?`,
 		memberID,
-	).Scan(&p.Name, &p.NationalID, &p.Location, &p.NextOfKin)
+	).Scan(&p.Name, &p.PreferredFirstName, &p.AvatarURL, &p.Phone, &p.Email, &p.NationalID,
+		&p.Location, &p.DefaultPayoutMethod, &p.NextOfKin, &p.NextOfKinRelationship,
+		&p.NextOfKinIDNumber, &p.NextOfKinPhone, &p.NotifySMS, &p.NotifyEmail)
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
+}
+
+func UpdateProfile(db *sql.DB, memberID int64, nationalID, location, nextOfKin, nextOfKinRelationship, nextOfKinIDNumber, nextOfKinPhone, preferredFirstName, defaultPayoutMethod string, notifySMS, notifyEmail bool) error {
+	_, err := db.Exec(
+		`UPDATE members SET national_id = ?, location = ?, next_of_kin = ?, next_of_kin_relationship = ?,
+		 next_of_kin_id_number = ?, next_of_kin_phone = ?, preferred_first_name = ?, default_payout_method = ?,
+		 notify_sms = ?, notify_email = ? WHERE id = ?`,
+		nationalID, location, nextOfKin, nextOfKinRelationship, nextOfKinIDNumber, nextOfKinPhone,
+		preferredFirstName, defaultPayoutMethod, notifySMS, notifyEmail, memberID,
+	)
+	return err
 }
