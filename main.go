@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
     _ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
 )
@@ -50,6 +51,24 @@ func main() {
 		log.Fatal("Failed to apply schema:", err)
 	}
 	fmt.Println("Database schema ensured.")
+
+	newColumns := []string{
+		"ALTER TABLE members ADD COLUMN avatar_url TEXT",
+		"ALTER TABLE members ADD COLUMN preferred_first_name TEXT",
+		"ALTER TABLE members ADD COLUMN default_payout_method TEXT",
+		"ALTER TABLE members ADD COLUMN next_of_kin_relationship TEXT",
+		"ALTER TABLE members ADD COLUMN next_of_kin_id_number TEXT",
+		"ALTER TABLE members ADD COLUMN next_of_kin_phone TEXT",
+		"ALTER TABLE members ADD COLUMN notify_sms INTEGER DEFAULT 1",
+		"ALTER TABLE members ADD COLUMN notify_email INTEGER DEFAULT 1",
+	}
+	for _, stmt := range newColumns {
+		_, err := db.Exec(stmt)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			log.Fatal("Failed to add column:", err)
+		}
+	}
+	fmt.Println("Profile system columns ensured.")
 
 	startServer(db)
 }
