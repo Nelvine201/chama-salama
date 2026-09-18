@@ -474,6 +474,76 @@ func startServer(db *sql.DB) {
 		}
 	})
 
+		http.HandleFunc("/chama/my-chamas", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamas, err := GetMemberChamas(db, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load chamas:", err)
+			return
+		}
+
+		data := struct {
+			Chamas []ChamaMembership
+		}{
+			Chamas: chamas,
+		}
+
+		tmpl := template.Must(template.ParseFiles("create-chama.html"))
+		tmpl.Execute(w, data)
+	})
+
+	http.HandleFunc("/chama/create", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		name := r.FormValue("name")
+		_, err = CreateChama(db, name, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to create chama:", err)
+			return
+		}
+
+		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+	})
+
+	http.HandleFunc("/chama/roster", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamaIDStr := r.URL.Query().Get("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid chama ID")
+			return
+		}
+
+		roster, err := GetChamaRoster(db, chamaID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load roster:", err)
+			return
+		}
+
+		for _, m := range roster {
+			fmt.Fprintln(w, m.MemberID, m.Name, m.Role)
+		}
+	})
+
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
