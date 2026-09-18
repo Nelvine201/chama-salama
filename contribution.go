@@ -1,4 +1,5 @@
 package main
+
 import (
 	"database/sql"
 	"fmt"
@@ -11,13 +12,13 @@ type Contribution struct {
 	PaidOn   string
 	Source   string
 	Status   string
-	
 }
-func RecordContribution(db *sql.DB, memberID int64, amount float64, paidOn, source string) (int64,error) {
+
+func RecordContribution(db *sql.DB, memberID int64, amount float64, paidOn, source string) (int64, error) {
 	if amount <= 0 {
 		return 0, fmt.Errorf("amount must be greater than zero")
 	}
-	result, err :=db.Exec(
+	result, err := db.Exec(
 		"INSERT INTO contributions (member_id, amount, paid_on, source, status) VALUES (?, ?, ?, ?, ?)",
 		memberID, amount, paidOn, source, "synced",
 	)
@@ -145,5 +146,3 @@ func GetRecentContributions(db *sql.DB, limit int) ([]ContributionWithMember, er
 
 	return results, nil
 }
-
-

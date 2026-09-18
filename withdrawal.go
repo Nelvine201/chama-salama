@@ -73,4 +73,3 @@ func ApproveWithdrawal(db *sql.DB, withdrawalID, memberID int64) (bool, error) {
 
 	return false, nil
 }
-

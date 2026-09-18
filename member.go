@@ -2,18 +2,19 @@ package main
 
 import (
 	"database/sql"
-	"golang.org/x/crypto/bcrypt"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 )
+
 type Member struct {
-	
-	ID  int64
-	Name string
+	ID    int64
+	Name  string
 	Phone string
 	Email string
-	Role string
+	Role  string
 }
-func CreateMember(db *sql.DB, name, phone, email, password, role string, termsAccepted bool,) (int64, error) {
+
+func CreateMember(db *sql.DB, name, phone, email, password, role string, termsAccepted bool) (int64, error) {
 	if err := validateMemberInput(name, phone, email, password); err != nil {
 		return 0, err
 	}
@@ -21,7 +22,6 @@ func CreateMember(db *sql.DB, name, phone, email, password, role string, termsAc
 	if !termsAccepted {
 		return 0, fmt.Errorf("you must accept the terms and conditions to register")
 	}
-
 
 	if phone != "" {
 		exists, err := phoneExists(db, phone)
@@ -140,6 +140,7 @@ func CheckLogin(db *sql.DB, identifier, password string) (*Member, error) {
 
 	return member, nil
 }
+
 type MemberProfile struct {
 	Name                  string
 	PreferredFirstName    sql.NullString

@@ -6,10 +6,10 @@ import (
 )
 
 type GroupSettings struct {
-	ID                  int64
-	ContributionAmount  float64
-	Frequency           string
-	PayoutOrder         sql.NullString
+	ID                 int64
+	ContributionAmount float64
+	Frequency          string
+	PayoutOrder        sql.NullString
 }
 
 func SetGroupSettings(db *sql.DB, amount float64, frequency string) error {

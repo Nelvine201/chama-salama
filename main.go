@@ -3,11 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"log"
+	_ "modernc.org/sqlite"
 	"os"
 	"strings"
-    _ "github.com/tursodatabase/libsql-client-go/libsql"
-	_ "modernc.org/sqlite"
 )
 
 func main() {
