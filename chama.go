@@ -182,4 +182,63 @@ func GetMemberRoleInChama(db *sql.DB, chamaID, memberID int64) (string, error) {
 	}
 	return role, nil
 }
+type ChamaCard struct {
+	ChamaID            int64
+	ChamaName          string
+	Role               string
+	MemberCount        int
+	QueuePosition      int
+	NextRecipientName  string
+	NextPayoutDate     string
+	ContributionPaid   bool
+	ContributionAmount float64
+	PendingInviteCount int
+}
 
+func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
+	memberships, err := GetMemberChamas(db, memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	var cards []ChamaCard
+	for _, m := range memberships {
+		var c ChamaCard
+		c.ChamaID = m.ChamaID
+		c.ChamaName = m.ChamaName
+		c.Role = m.Role
+
+		db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", m.ChamaID).Scan(&c.MemberCount)
+
+		var amount float64
+		var position int
+		var nextDate sql.NullString
+		db.QueryRow("SELECT contribution_amount, payout_position, next_payout_date FROM group_settings WHERE chama_id = ? LIMIT 1", m.ChamaID).
+			Scan(&amount, &position, &nextDate)
+		c.ContributionAmount = amount
+		c.NextPayoutDate = nextDate.String
+
+		db.QueryRow(
+			`SELECT name FROM members WHERE id = (
+				SELECT member_id FROM chama_members WHERE chama_id = ? AND status = 'active' ORDER BY joined_at LIMIT 1 OFFSET ?
+			)`, m.ChamaID, position,
+		).Scan(&c.NextRecipientName)
+
+		db.QueryRow(
+			`SELECT COUNT(*) + 1 FROM chama_members WHERE chama_id = ? AND status = 'active' AND joined_at < (
+				SELECT joined_at FROM chama_members WHERE chama_id = ? AND member_id = ?
+			)`, m.ChamaID, m.ChamaID, memberID,
+		).Scan(&c.QueuePosition)
+
+		var paidCount int
+		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", m.ChamaID, memberID).Scan(&paidCount)
+		c.ContributionPaid = paidCount > 0
+
+		if m.Role == "admin" {
+			db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'pending'", m.ChamaID).Scan(&c.PendingInviteCount)
+		}
+
+		cards = append(cards, c)
+	}
+	return cards, nil
+}

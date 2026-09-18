@@ -481,20 +481,18 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		chamas, err := GetMemberChamas(db, memberID)
+		cards, err := GetMemberChamaCards(db, memberID)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to load chamas:", err)
 			return
 		}
 
-		data := struct {
-			Chamas []ChamaMembership
-		}{
-			Chamas: chamas,
-		}
-
+		data := struct{ Cards []ChamaCard }{Cards: cards}
 		tmpl := template.Must(template.ParseFiles("create-chama.html"))
 		tmpl.Execute(w, data)
+	})
+		http.HandleFunc("/chama/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/chama/create", func(w http.ResponseWriter, r *http.Request) {
