@@ -52,7 +52,7 @@ func main() {
 	}
 	fmt.Println("Database schema ensured.")
 
-	newColumns := []string{
+		newColumns := []string{
 		"ALTER TABLE members ADD COLUMN avatar_url TEXT",
 		"ALTER TABLE members ADD COLUMN preferred_first_name TEXT",
 		"ALTER TABLE members ADD COLUMN default_payout_method TEXT",
@@ -61,6 +61,10 @@ func main() {
 		"ALTER TABLE members ADD COLUMN next_of_kin_phone TEXT",
 		"ALTER TABLE members ADD COLUMN notify_sms INTEGER DEFAULT 1",
 		"ALTER TABLE members ADD COLUMN notify_email INTEGER DEFAULT 1",
+		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
+		"ALTER TABLE contributions ADD COLUMN chama_id INTEGER",
+		"ALTER TABLE group_settings ADD COLUMN chama_id INTEGER",
+		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
 	}
 	for _, stmt := range newColumns {
 		_, err := db.Exec(stmt)
@@ -88,7 +92,15 @@ func main() {
 			}
 		}
 	}
-	
+	var defaultChamaID int64
+	db.QueryRow("SELECT id FROM chamas ORDER BY id LIMIT 1").Scan(&defaultChamaID)
+	if defaultChamaID != 0 {
+		db.Exec("UPDATE contributions SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
+		db.Exec("UPDATE group_settings SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
+		db.Exec("UPDATE withdrawals SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
+		fmt.Println("Backfilled chama_id for existing records.")
+	}
+
 
 	startServer(db)
 }

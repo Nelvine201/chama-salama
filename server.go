@@ -543,6 +543,87 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, m.MemberID, m.Name, m.Role)
 		}
 	})
+		http.HandleFunc("/chama/invite", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamaIDStr := r.FormValue("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid chama ID")
+			return
+		}
+
+		identifier := r.FormValue("identifier")
+		role := r.FormValue("role")
+		if role == "" {
+			role = "member"
+		}
+
+		err = InviteMember(db, chamaID, identifier, role)
+		if err != nil {
+			fmt.Fprintln(w, "Invite failed:", err)
+			return
+		}
+
+		http.Redirect(w, r, "/chama/roster?chama_id="+chamaIDStr, http.StatusSeeOther)
+	})
+
+	http.HandleFunc("/chama/invitations", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		invitations, err := GetPendingInvitations(db, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load invitations:", err)
+			return
+		}
+
+		for _, inv := range invitations {
+			fmt.Fprintln(w, inv.ChamaID, inv.ChamaName, inv.Role)
+		}
+	})
+
+	http.HandleFunc("/chama/respond", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamaIDStr := r.FormValue("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid chama ID")
+			return
+		}
+
+		accept := r.FormValue("accept") == "true"
+
+		err = RespondToInvitation(db, chamaID, memberID, accept)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to respond:", err)
+			return
+		}
+
+		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+	})
 
 	fmt.Println("Server starting on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
