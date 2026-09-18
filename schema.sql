@@ -58,3 +58,20 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+CREATE TABLE IF NOT EXISTS chamas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_by INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES members(id)
+);
+
+CREATE TABLE IF NOT EXISTS chama_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chama_id INTEGER NOT NULL,
+    member_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chama_id) REFERENCES chamas(id),
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);

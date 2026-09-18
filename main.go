@@ -70,5 +70,25 @@ func main() {
 	}
 	fmt.Println("Profile system columns ensured.")
 
+		var chamaCount int
+	db.QueryRow("SELECT COUNT(*) FROM chamas").Scan(&chamaCount)
+	if chamaCount == 0 {
+		var firstMemberID int64
+		err := db.QueryRow("SELECT id FROM members ORDER BY id LIMIT 1").Scan(&firstMemberID)
+		if err == nil {
+			result, err := db.Exec("INSERT INTO chamas (name, created_by) VALUES (?, ?)", "Chama Salama", firstMemberID)
+			if err == nil {
+				chamaID, _ := result.LastInsertId()
+				db.Exec(
+					`INSERT INTO chama_members (chama_id, member_id, role)
+					 SELECT ?, id, role FROM members WHERE id NOT IN (SELECT member_id FROM chama_members WHERE chama_id = ?)`,
+					chamaID, chamaID,
+				)
+				fmt.Println("Default chama created and existing members attached.")
+			}
+		}
+	}
+	
+
 	startServer(db)
 }
