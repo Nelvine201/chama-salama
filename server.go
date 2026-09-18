@@ -519,8 +519,8 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 	})
 
-	http.HandleFunc("/chama/roster", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		http.HandleFunc("/chama/roster", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
@@ -539,9 +539,26 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		for _, m := range roster {
-			fmt.Fprintln(w, m.MemberID, m.Name, m.Role)
+		role, _ := GetMemberRoleInChama(db, chamaID, memberID)
+		isAdmin := role == "admin"
+
+		var chamaName string
+		db.QueryRow("SELECT name FROM chamas WHERE id = ?", chamaID).Scan(&chamaName)
+
+		data := struct {
+			ChamaID   int64
+			ChamaName string
+			Roster    []RosterMember
+			IsAdmin   bool
+		}{
+			ChamaID:   chamaID,
+			ChamaName: chamaName,
+			Roster:    roster,
+			IsAdmin:   isAdmin,
 		}
+
+		tmpl := template.Must(template.ParseFiles("chama-roster.html"))
+		tmpl.Execute(w, data)
 	})
 		http.HandleFunc("/chama/invite", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -576,7 +593,6 @@ func startServer(db *sql.DB) {
 
 		http.Redirect(w, r, "/chama/roster?chama_id="+chamaIDStr, http.StatusSeeOther)
 	})
-
 	http.HandleFunc("/chama/invitations", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
@@ -584,15 +600,22 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		invitations, err := GetPendingInvitations(db, memberID)
+		memberName, invitations, err := GetPendingInvitations(db, memberID)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to load invitations:", err)
 			return
 		}
 
-		for _, inv := range invitations {
-			fmt.Fprintln(w, inv.ChamaID, inv.ChamaName, inv.Role)
+		data := struct {
+			MemberName  string
+			Invitations []PendingInvitation
+		}{
+			MemberName:  memberName,
+			Invitations: invitations,
 		}
+
+		tmpl := template.Must(template.ParseFiles("invitations.html"))
+		tmpl.Execute(w, data)
 	})
 
 	http.HandleFunc("/chama/respond", func(w http.ResponseWriter, r *http.Request) {

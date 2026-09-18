@@ -145,7 +145,10 @@ type PendingInvitation struct {
 	Role      string
 }
 
-func GetPendingInvitations(db *sql.DB, memberID int64) ([]PendingInvitation, error) {
+func GetPendingInvitations(db *sql.DB, memberID int64) (string, []PendingInvitation, error) {
+	var memberName string
+	db.QueryRow("SELECT name FROM members WHERE id = ?", memberID).Scan(&memberName)
+
 	rows, err := db.Query(
 		`SELECT c.id, c.name, cm.role
 		 FROM chama_members cm
@@ -154,7 +157,7 @@ func GetPendingInvitations(db *sql.DB, memberID int64) ([]PendingInvitation, err
 		memberID,
 	)
 	if err != nil {
-		return nil, err
+		return memberName, nil, err
 	}
 	defer rows.Close()
 
@@ -162,10 +165,21 @@ func GetPendingInvitations(db *sql.DB, memberID int64) ([]PendingInvitation, err
 	for rows.Next() {
 		var i PendingInvitation
 		if err := rows.Scan(&i.ChamaID, &i.ChamaName, &i.Role); err != nil {
-			return nil, err
+			return memberName, nil, err
 		}
 		invitations = append(invitations, i)
 	}
-	return invitations, nil
+	return memberName, invitations, nil
+}
+func GetMemberRoleInChama(db *sql.DB, chamaID, memberID int64) (string, error) {
+	var role string
+	err := db.QueryRow(
+		"SELECT role FROM chama_members WHERE chama_id = ? AND member_id = ? AND status = 'active'",
+		chamaID, memberID,
+	).Scan(&role)
+	if err != nil {
+		return "", err
+	}
+	return role, nil
 }
 

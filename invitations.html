@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chama Salama — Invitations</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; color: #26241f; background-color: #fbf8f1; }
+    header { display: flex; align-items: center; padding: 20px 40px; border-bottom: 1px solid #ddd; }
+    header svg { margin-right: 10px; }
+    header h1 { font-size: 20px; color: #1f5c3d; margin: 0; }
+    main { max-width: 460px; margin: 60px auto; padding: 0 20px; }
+    .card { background: #f4efe2; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
+    .card h2 { color: #1f5c3d; margin: 20px 0 4px; font-size: 16px; }
+    .invite-role { color: #555; font-size: 13px; margin-bottom: 12px; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row form { flex: 1; }
+    button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .accept { background: #1f5c3d; color: #fbf8f1; }
+    .decline { background: transparent; color: #c96f4a; border: 1px solid #c96f4a; }
+    a { color: #2f7a52; }
+  </style>
+</head>
+<body>
+  <header>
+    <svg width="28" height="28" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
+      <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
+      <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
+      <circle cx="50" cy="42" r="4" fill="#e6c258"/>
+    </svg>
+    <h1>Chama Salama</h1>
+  </header>
+  <main>
+    <h2 style="color: #1f5c3d;">Hi {{.MemberName}}, your invitations</h2>
+
+    {{if .Invitations}}
+      {{range .Invitations}}
+      <div class="card">
+        <strong>{{.ChamaName}}</strong>
+        <p class="invite-role">Invited as: {{.Role}}</p>
+        <div class="btn-row">
+          <form action="/chama/respond" method="POST">
+            <input type="hidden" name="chama_id" value="{{.ChamaID}}">
+            <input type="hidden" name="accept" value="true">
+            <button type="submit" class="accept">Accept</button>
+          </form>
+          <form action="/chama/respond" method="POST">
+            <input type="hidden" name="chama_id" value="{{.ChamaID}}">
+            <input type="hidden" name="accept" value="false">
+            <button type="submit" class="decline">Decline</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    {{else}}
+      <p style="color: #999; font-size: 14px;">No pending invitations.</p>
+    {{end}}
+
+    <p style="margin-top: 16px; font-size: 13px;"><a href="/dashboard">Back to dashboard</a></p>
+  </main>
+</body>
+</html>
