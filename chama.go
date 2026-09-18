@@ -242,3 +242,51 @@ func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
 	}
 	return cards, nil
 }
+func GetGroupBalanceForChama(db *sql.DB, chamaID int64) (float64, error) {
+	var total float64
+	err := db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE chama_id = ? AND status = 'synced'", chamaID).Scan(&total)
+	return total, err
+}
+
+func GetGroupSettingsForChama(db *sql.DB, chamaID int64) (float64, string, error) {
+	var amount float64
+	var frequency string
+	err := db.QueryRow("SELECT contribution_amount, frequency FROM group_settings WHERE chama_id = ? LIMIT 1", chamaID).Scan(&amount, &frequency)
+	return amount, frequency, err
+}
+
+func GetRecentContributionsForChama(db *sql.DB, chamaID int64, limit int) ([]ContributionWithMember, error) {
+	rows, err := db.Query(
+		`SELECT c.id, m.name, c.amount, c.paid_on, c.status
+		 FROM contributions c JOIN members m ON c.member_id = m.id
+		 WHERE c.chama_id = ? ORDER BY c.id DESC LIMIT ?`, chamaID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var results []ContributionWithMember
+	for rows.Next() {
+		var c ContributionWithMember
+		if err := rows.Scan(&c.ID, &c.MemberName, &c.Amount, &c.PaidOn, &c.Status); err != nil {
+			return nil, err
+		}
+		results = append(results, c)
+	}
+	return results, nil
+}
+
+func GetPayoutQueueInfo(db *sql.DB, chamaID, memberID int64) (recipientName string, position int, queuePos int) {
+	db.QueryRow("SELECT payout_position FROM group_settings WHERE chama_id = ? LIMIT 1", chamaID).Scan(&position)
+	db.QueryRow(
+		`SELECT name FROM members WHERE id = (
+			SELECT member_id FROM chama_members WHERE chama_id = ? AND status = 'active' ORDER BY joined_at LIMIT 1 OFFSET ?
+		)`, chamaID, position,
+	).Scan(&recipientName)
+	db.QueryRow(
+		`SELECT COUNT(*) + 1 FROM chama_members WHERE chama_id = ? AND status = 'active' AND joined_at < (
+			SELECT joined_at FROM chama_members WHERE chama_id = ? AND member_id = ?
+		)`, chamaID, chamaID, memberID,
+	).Scan(&queuePos)
+	return
+}

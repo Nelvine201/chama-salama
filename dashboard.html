@@ -5,140 +5,33 @@
   <title>Chama Salama — Dashboard</title>
   <style>
     * { box-sizing: border-box; }
-
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      color: #26241f;
-      background-color: #fbf8f1;
-    }
-
-    .layout {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    nav.sidebar {
-      width: 220px;
-      background: #1f5c3d;
-      color: #fbf8f1;
-      padding: 24px 0;
-      flex-shrink: 0;
-    }
-
-    .sidebar .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 20px 20px;
-      margin-bottom: 10px;
-      border-bottom: 1px solid rgba(251, 248, 241, 0.15);
-    }
-
-    .sidebar .brand span {
-      font-weight: bold;
-      font-size: 16px;
-    }
-
-    .sidebar a {
-      display: block;
-      color: #f4efe2;
-      text-decoration: none;
-      padding: 12px 20px;
-      font-size: 14px;
-    }
-
-    .sidebar a:hover {
-      background: rgba(251, 248, 241, 0.1);
-    }
-
-    .sidebar a.active {
-      background: rgba(251, 248, 241, 0.15);
-      font-weight: bold;
-      border-left: 3px solid #e6c258;
-    }
-
-    main {
-      flex: 1;
-      padding: 40px;
-    }
-
-    main h1 {
-      color: #1f5c3d;
-      font-size: 22px;
-      margin-top: 0;
-      margin-bottom: 24px;
-    }
-
-    .stats {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 40px;
-      flex-wrap: wrap;
-    }
-
-    .stat-card {
-      background: #f4efe2;
-      border-radius: 10px;
-      padding: 20px;
-      flex: 1;
-      min-width: 180px;
-    }
-
-    .stat-card p.label {
-      font-size: 13px;
-      color: #555;
-      margin: 0 0 6px;
-    }
-
-    .stat-card p.value {
-      font-size: 24px;
-      font-weight: bold;
-      color: #1f5c3d;
-      margin: 0;
-    }
-
-    .section-card {
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 10px;
-      padding: 24px;
-    }
-
-    h2 {
-      color: #1f5c3d;
-      font-size: 16px;
-      margin-top: 0;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    .status-synced {
-      color: #2f7a52;
-      font-weight: bold;
-    }
-
-    .status-pending {
-      color: #c96f4a;
-      font-weight: bold;
-    }
-
-    .empty-state {
-      color: #999;
-      font-size: 14px;
-      padding: 20px 0;
-      text-align: center;
-    }
+    body { font-family: sans-serif; margin: 0; color: #26241f; background-color: #fbf8f1; }
+    .layout { display: flex; min-height: 100vh; }
+    nav.sidebar { width: 220px; background: #1f5c3d; color: #fbf8f1; padding: 24px 0; flex-shrink: 0; }
+    .sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 0 20px 20px; margin-bottom: 10px; border-bottom: 1px solid rgba(251,248,241,0.15); }
+    .sidebar .brand span { font-weight: bold; font-size: 16px; }
+    .sidebar a { display: block; color: #f4efe2; text-decoration: none; padding: 12px 20px; font-size: 14px; }
+    .sidebar a:hover { background: rgba(251,248,241,0.1); }
+    .sidebar a.active { background: rgba(251,248,241,0.15); font-weight: bold; border-left: 3px solid #e6c258; }
+    .sidebar .section-label { padding: 16px 20px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(251,248,241,0.5); }
+    main { flex: 1; padding: 40px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    select.chama-select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; background: #fff; }
+    h1 { color: #1f5c3d; font-size: 22px; margin: 0 0 4px; }
+    .subtext { color: #555; margin: 0 0 30px; }
+    .stats { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: #f4efe2; border-radius: 10px; padding: 20px; flex: 1; min-width: 180px; }
+    .stat-card p.label { font-size: 13px; color: #555; margin: 0 0 6px; }
+    .stat-card p.value { font-size: 22px; font-weight: bold; color: #1f5c3d; margin: 0; }
+    .status-paid { color: #2f7a52; }
+    .status-pending-badge { color: #c96f4a; }
+    .section-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+    h2 { color: #1f5c3d; font-size: 16px; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    .status-synced { color: #2f7a52; font-weight: bold; }
+    .status-pending { color: #c96f4a; font-weight: bold; }
+    .empty-state { color: #999; font-size: 14px; padding: 20px 0; text-align: center; }
   </style>
 </head>
 <body>
@@ -153,56 +46,76 @@
         </svg>
         <span>Chama Salama</span>
       </div>
-      <a href="/dashboard" class="active">Dashboard</a>
+      <a href="/dashboard?chama_id={{.ActiveChamaID}}" class="active">Dashboard</a>
       <a href="/chama/my-chamas">My Chamas</a>
       <a href="/contribute-page">Contribute</a>
       <a href="/withdraw/request-page">Request Withdrawal</a>
+
+      {{if .IsAdminOrTreasurer}}
+      <div class="section-label">Admin only</div>
+      <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Manage Members</a>
       <a href="/withdraw/approve-page">Approve Withdrawal</a>
+      {{end}}
     </nav>
 
     <main>
-      <div style="display: flex; justify-content: flex-end; position: relative; margin-bottom: 10px;">
-        <div id="avatarButton" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 8px;" onclick="toggleAvatarMenu()">
+      <div class="topbar">
+        <div id="avatarButton" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 8px; margin-left: auto;" onclick="toggleAvatarMenu()">
           <div style="width: 32px; height: 32px; border-radius: 50%; background: #1f5c3d; color: #f4efe2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold;">
             {{slice .FirstName 0 1}}
           </div>
           <span style="font-size: 14px; color: #1f5c3d; font-weight: bold;">{{.FirstName}}</span>
         </div>
-        <div id="avatarMenu" style="display: none; position: absolute; top: 42px; right: 0; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); min-width: 160px; overflow: hidden; z-index: 10;">
+      </div>
+      <div style="position: relative;">
+        <div id="avatarMenu" style="display: none; position: absolute; top: -10px; right: 0; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); min-width: 160px; overflow: hidden; z-index: 10;">
           <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">My Profile</a>
           <a href="/chama/invitations" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">Invitations</a>
           <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">Account Settings</a>
           <a href="/logout" style="display: block; padding: 10px 16px; font-size: 14px; color: #c96f4a; text-decoration: none; border-top: 1px solid #eee;">Logout</a>
         </div>
       </div>
-            <h1>Welcome, {{.FirstName}}!</h1>
-      <p style="color: #555; margin-top: -18px; margin-bottom: 30px;">Track your savings and merry-go-round.</p>
+
+      {{if gt (len .Chamas) 1}}
+      <form method="GET" action="/dashboard" style="margin-bottom: 10px;">
+        <label style="font-size: 13px; color: #555;">Active Chama:</label>
+        <select class="chama-select" name="chama_id" onchange="this.form.submit()">
+          {{range .Chamas}}
+          <option value="{{.ChamaID}}" {{if eq .ChamaID $.ActiveChamaID}}selected{{end}}>{{.ChamaName}}</option>
+          {{end}}
+        </select>
+      </form>
+      {{end}}
+
+      <h1>Welcome, {{.FirstName}}!</h1>
+      <p class="subtext">Track your savings and merry-go-round for {{.ActiveChamaName}}.</p>
 
       <div class="stats">
         <div class="stat-card">
-          <p class="label">Group balance</p>
+          <p class="label">Group Pool</p>
           <p class="value">KES {{.Balance}}</p>
         </div>
         <div class="stat-card">
-          <p class="label">Contribution amount</p>
-          <p class="value">KES {{.Amount}}</p>
+          <p class="label">Contribution Rate</p>
+          <p class="value">KES {{.Amount}} / {{.Frequency}}</p>
         </div>
         <div class="stat-card">
-          <p class="label">Frequency</p>
-          <p class="value">{{.Frequency}}</p>
+          <p class="label">Your Status</p>
+          <p class="value {{if .PersonalPaid}}status-paid{{else}}status-pending-badge{{end}}">{{if .PersonalPaid}}PAID{{else}}PENDING{{end}}</p>
         </div>
+      </div>
+
+      <div class="section-card">
+        <h2>Merry-Go-Round Queue</h2>
+        <p>Next recipient: <strong>{{.RecipientName}}</strong></p>
+        <p>Your turn: Position #{{.QueuePosition}}</p>
       </div>
 
       <div class="section-card">
         <h2>Recent contributions</h2>
         {{if .Contributions}}
         <table>
-          <tr>
-            <th>Member</th>
-            <th>Amount</th>
-            <th>Date</th>
-            <th>Status</th>
-          </tr>
+          <tr><th>Member</th><th>Amount</th><th>Date</th><th>Status</th></tr>
           {{range .Contributions}}
           <tr>
             <td>{{.MemberName}}</td>
@@ -219,7 +132,7 @@
     </main>
   </div>
 
-    <script>
+  <script>
     function toggleAvatarMenu() {
       const menu = document.getElementById('avatarMenu');
       menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
@@ -227,9 +140,7 @@
     document.addEventListener('click', function(event) {
       const button = document.getElementById('avatarButton');
       const menu = document.getElementById('avatarMenu');
-      if (!button.contains(event.target)) {
-        menu.style.display = 'none';
-      }
+      if (!button.contains(event.target)) menu.style.display = 'none';
     });
   </script>
 </body>

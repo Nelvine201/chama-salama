@@ -354,39 +354,79 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "Failed to load profile:", err)
 			return
 		}
-
 		firstName := strings.Fields(profile.Name)[0]
 
-		balance, err := GetGroupBalance(db)
+		chamas, err := GetMemberChamas(db, memberID)
 		if err != nil {
-			fmt.Fprintln(w, "Failed to load dashboard:", err)
+			fmt.Fprintln(w, "Failed to load chamas:", err)
+			return
+		}
+		if len(chamas) == 0 {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
 
-		settings, err := GetGroupSettings(db)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to load group settings:", err)
+		chamaIDStr := r.URL.Query().Get("chama_id")
+		var activeChamaID int64
+		var activeRole string
+		if chamaIDStr != "" {
+			activeChamaID, _ = strconv.ParseInt(chamaIDStr, 10, 64)
+		}
+		var activeChamaName string
+		found := false
+		for _, c := range chamas {
+			if activeChamaID == 0 || c.ChamaID == activeChamaID {
+				activeChamaID = c.ChamaID
+				activeChamaName = c.ChamaName
+				activeRole = c.Role
+				found = true
+				break
+			}
+		}
+		if !found {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
 
-		contributions, err := GetRecentContributions(db, 10)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to load contributions:", err)
-			return
-		}
+		balance, _ := GetGroupBalanceForChama(db, activeChamaID)
+		amount, frequency, _ := GetGroupSettingsForChama(db, activeChamaID)
+		contributions, _ := GetRecentContributionsForChama(db, activeChamaID, 10)
+		recipientName, _, queuePos := GetPayoutQueueInfo(db, activeChamaID, memberID)
+
+		var paidCount int
+		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", activeChamaID, memberID).Scan(&paidCount)
+		personalPaid := paidCount > 0
+
+		isAdminOrTreasurer := activeRole == "admin" || activeRole == "treasurer"
 
 		data := struct {
-			FirstName     string
-			Balance       float64
-			Frequency     string
-			Amount        float64
-			Contributions []ContributionWithMember
+			FirstName           string
+			ActiveChamaID       int64
+			ActiveChamaName     string
+			ActiveRole          string
+			Chamas              []ChamaMembership
+			Balance             float64
+			Amount              float64
+			Frequency           string
+			Contributions       []ContributionWithMember
+			RecipientName       string
+			QueuePosition       int
+			PersonalPaid        bool
+			IsAdminOrTreasurer  bool
 		}{
-			FirstName:     firstName,
-			Balance:       balance,
-			Frequency:     settings.Frequency,
-			Amount:        settings.ContributionAmount,
-			Contributions: contributions,
+			FirstName:          firstName,
+			ActiveChamaID:      activeChamaID,
+			ActiveChamaName:    activeChamaName,
+			ActiveRole:         activeRole,
+			Chamas:             chamas,
+			Balance:            balance,
+			Amount:             amount,
+			Frequency:          frequency,
+			Contributions:      contributions,
+			RecipientName:      recipientName,
+			QueuePosition:      queuePos,
+			PersonalPaid:       personalPaid,
+			IsAdminOrTreasurer: isAdminOrTreasurer,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
@@ -491,8 +531,8 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("create-chama.html"))
 		tmpl.Execute(w, data)
 	})
-		http.HandleFunc("/chama/dashboard", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			http.HandleFunc("/chama/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/dashboard?chama_id="+r.URL.Query().Get("chama_id"), http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/chama/create", func(w http.ResponseWriter, r *http.Request) {
