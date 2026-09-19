@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"encoding/json"
 )
 
 func startServer(db *sql.DB) {
@@ -249,7 +250,7 @@ func startServer(db *sql.DB) {
 		fmt.Fprintln(w, "Sync complete. Contributions synced:", count)
 	})
 
-	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to read callback")
@@ -260,11 +261,47 @@ func startServer(db *sql.DB) {
 		fmt.Println("Received Daraja callback:")
 		fmt.Println(string(body))
 
+		var payload struct {
+			Body struct {
+				StkCallback struct {
+					CheckoutRequestID string `json:"CheckoutRequestID"`
+					ResultCode        int    `json:"ResultCode"`
+				} `json:"stkCallback"`
+			} `json:"Body"`
+		}
+
+		if err := json.Unmarshal(body, &payload); err != nil {
+			fmt.Println("Failed to parse callback:", err)
+			fmt.Fprintln(w, "Callback received")
+			return
+		}
+
+		checkoutID := payload.Body.StkCallback.CheckoutRequestID
+		success := payload.Body.StkCallback.ResultCode == 0
+
+		err = ConfirmSTKContribution(db, checkoutID, success)
+		if err != nil {
+			fmt.Println("Failed to update contribution:", err)
+		}
+
 		fmt.Fprintln(w, "Callback received")
 	})
-	http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamaIDStr := r.FormValue("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid chama ID")
 			return
 		}
 
@@ -283,13 +320,24 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		result, err := sendStkPush(token, phone, amount)
+		stkResp, err := sendStkPush(token, phone, amount)
 		if err != nil {
 			fmt.Fprintln(w, "STK push failed:", err)
 			return
 		}
 
-		fmt.Fprintln(w, "STK push response:", result)
+		if stkResp.ResponseCode != "0" {
+			fmt.Fprintln(w, "STK push rejected:", stkResp.ResponseDescription)
+			return
+		}
+
+		_, err = RecordPendingSTKContribution(db, memberID, chamaID, float64(amount), stkResp.CheckoutRequestID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to save pending contribution:", err)
+			return
+		}
+
+		fmt.Fprintf(w, "Check your phone (%s) to complete the M-Pesa payment.", phone)
 	})
 	http.HandleFunc("/admin/set-settings", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

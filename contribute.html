@@ -31,17 +31,13 @@
   <main>
     <div class="card">
       <h2>Record a contribution</h2>
-      <form action="/contribute" method="POST">
+        <form action="/stk-push" method="POST">
+        <input type="hidden" name="chama_id" value="{{.ChamaID}}">
         <label>Amount (KES)</label>
-        <input type="number" step="0.01" name="amount" required>
-        <label>Date paid</label>
-        <input type="date" name="paid_on" required>
-        <label>Source</label>
-        <select name="source">
-          <option value="manual">Manual (cash/other)</option>
-          <option value="mpesa">M-Pesa</option>
-        </select>
-        <button type="submit">Record contribution</button>
+        <input type="number" step="0.01" name="amount" value="{{.Amount}}" required>
+        <label>Phone Number</label>
+        <input type="text" name="phone" value="{{.Phone}}" required>
+        <button type="submit">Pay via M-Pesa</button>
       </form>
       {{if .Message}}<p class="message">{{.Message}}</p>{{end}}
       <p style="margin-top: 16px; font-size: 13px;"><a href="/dashboard">Back to dashboard</a></p>

@@ -62,7 +62,14 @@ func getAccessToken(consumerKey, consumerSecret string) (string, error) {
 
 	return result.AccessToken, nil
 }
-func sendStkPush(accessToken, phone string, amount int) (string, error) {
+type StkResponse struct {
+	MerchantRequestID  string `json:"MerchantRequestID"`
+	CheckoutRequestID  string `json:"CheckoutRequestID"`
+	ResponseCode       string `json:"ResponseCode"`
+	ResponseDescription string `json:"ResponseDescription"`
+}
+
+func sendStkPush(accessToken, phone string, amount int) (*StkResponse, error) {
 	password, timestamp := generateStkPassword()
 
 	payload := map[string]interface{}{
@@ -74,20 +81,20 @@ func sendStkPush(accessToken, phone string, amount int) (string, error) {
 		"PartyA":            phone,
 		"PartyB":            darajaShortcode,
 		"PhoneNumber":       phone,
-		"CallBackURL":       "https://handcart-latitude-decompose.ngrok-free.dev/callback",
+		"CallBackURL":       "https://chama-salama.onrender.com/callback",
 		"AccountReference":  "ChamaSalama",
 		"TransactionDesc":   "Chama contribution",
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	url := "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -95,14 +102,18 @@ func sendStkPush(accessToken, phone string, amount int) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(respBody), nil
+	var result StkResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

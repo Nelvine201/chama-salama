@@ -146,3 +146,22 @@ func GetRecentContributions(db *sql.DB, limit int) ([]ContributionWithMember, er
 
 	return results, nil
 }
+func RecordPendingSTKContribution(db *sql.DB, memberID, chamaID int64, amount float64, checkoutRequestID string) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO contributions (member_id, chama_id, amount, paid_on, source, status, checkout_request_id) VALUES (?, ?, ?, DATE('now'), ?, ?, ?)",
+		memberID, chamaID, amount, "mpesa", "pending", checkoutRequestID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func ConfirmSTKContribution(db *sql.DB, checkoutRequestID string, success bool) error {
+	status := "failed"
+	if success {
+		status = "synced"
+	}
+	_, err := db.Exec("UPDATE contributions SET status = ? WHERE checkout_request_id = ?", status, checkoutRequestID)
+	return err
+}

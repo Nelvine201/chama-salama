@@ -67,6 +67,7 @@ func main() {
 		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
 		"ALTER TABLE group_settings ADD COLUMN payout_position INTEGER DEFAULT 0",
 		"ALTER TABLE group_settings ADD COLUMN next_payout_date TEXT",
+		"ALTER TABLE contributions ADD COLUMN checkout_request_id TEXT",
 	}
 	for _, stmt := range newColumns {
 		_, err := db.Exec(stmt)
