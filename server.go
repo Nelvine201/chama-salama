@@ -171,7 +171,6 @@ func startServer(db *sql.DB) {
 	})
 	http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
-		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
