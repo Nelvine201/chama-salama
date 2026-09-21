@@ -170,13 +170,69 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 	http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+
+		chamas, err := GetMemberChamas(db, memberID)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to load chamas:", err)
+			return
+		}
+		if len(chamas) == 0 {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+			return
+		}
+
+		chamaIDStr := r.URL.Query().Get("chama_id")
+		var activeChamaID int64
+		if chamaIDStr != "" {
+			activeChamaID, _ = strconv.ParseInt(chamaIDStr, 10, 64)
+		}
+		found := false
+		for _, c := range chamas {
+			if activeChamaID == 0 || c.ChamaID == activeChamaID {
+				activeChamaID = c.ChamaID
+				found = true
+				break
+			}
+		}
+		if !found {
+			activeChamaID = chamas[0].ChamaID
+		}
+
+		amount, _, _ := GetGroupSettingsForChama(db, activeChamaID)
+
+		var phone string
+		if profile, err := GetMemberProfile(db, memberID); err == nil && profile.Phone.Valid {
+			phone = profile.Phone.String
+		}
+
+		var amountVal any
+		if amount > 0 {
+			if amount == float64(int64(amount)) {
+				amountVal = int64(amount)
+			} else {
+				amountVal = amount
+			}
+		}
+
+		data := struct {
+			ChamaID int64
+			Amount  any
+			Phone   string
+			Message string
+		}{
+			ChamaID: activeChamaID,
+			Amount:  amountVal,
+			Phone:   phone,
+			Message: r.URL.Query().Get("message"),
+		}
+
 		tmpl := template.Must(template.ParseFiles("contribute.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, data)
 	})
 
 	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
