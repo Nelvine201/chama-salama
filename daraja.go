@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"fmt"
 )
 
 const (
@@ -111,9 +112,23 @@ func sendStkPush(accessToken, phone string, amount int) (*StkResponse, error) {
 		return nil, err
 	}
 
+	fmt.Println("Raw STK response:", string(respBody))
+
 	var result StkResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, err
 	}
+
+	if result.ResponseCode == "" {
+		var errResp struct {
+			ErrorCode    string `json:"errorCode"`
+			ErrorMessage string `json:"errorMessage"`
+		}
+		json.Unmarshal(respBody, &errResp)
+		if errResp.ErrorMessage != "" {
+			return nil, fmt.Errorf("Daraja error [%s]: %s", errResp.ErrorCode, errResp.ErrorMessage)
+		}
+	}
+
 	return &result, nil
 }

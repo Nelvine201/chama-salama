@@ -2,13 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"encoding/json"
 )
 
 func startServer(db *sql.DB) {
@@ -170,13 +170,39 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 	http.HandleFunc("/contribute-page", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+
+		chamas, err := GetMemberChamas(db, memberID)
+		if err != nil || len(chamas) == 0 {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+			return
+		}
+		chamaID := chamas[0].ChamaID
+		if qid := r.URL.Query().Get("chama_id"); qid != "" {
+			if parsed, err := strconv.ParseInt(qid, 10, 64); err == nil {
+				chamaID = parsed
+			}
+		}
+
+		amount, _, _ := GetGroupSettingsForChama(db, chamaID)
+		profile, _ := GetMemberProfile(db, memberID)
+
+		data := struct {
+			ChamaID int64
+			Amount  float64
+			Phone   string
+		}{
+			ChamaID: chamaID,
+			Amount:  amount,
+			Phone:   profile.Phone.String,
+		}
+
 		tmpl := template.Must(template.ParseFiles("contribute.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, data)
 	})
 
 	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
@@ -250,7 +276,7 @@ func startServer(db *sql.DB) {
 		fmt.Fprintln(w, "Sync complete. Contributions synced:", count)
 	})
 
-		http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to read callback")
@@ -286,7 +312,7 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Callback received")
 	})
-		http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
@@ -448,19 +474,19 @@ func startServer(db *sql.DB) {
 		isAdminOrTreasurer := activeRole == "admin" || activeRole == "treasurer"
 
 		data := struct {
-			FirstName           string
-			ActiveChamaID       int64
-			ActiveChamaName     string
-			ActiveRole          string
-			Chamas              []ChamaMembership
-			Balance             float64
-			Amount              float64
-			Frequency           string
-			Contributions       []ContributionWithMember
-			RecipientName       string
-			QueuePosition       int
-			PersonalPaid        bool
-			IsAdminOrTreasurer  bool
+			FirstName          string
+			ActiveChamaID      int64
+			ActiveChamaName    string
+			ActiveRole         string
+			Chamas             []ChamaMembership
+			Balance            float64
+			Amount             float64
+			Frequency          string
+			Contributions      []ContributionWithMember
+			RecipientName      string
+			QueuePosition      int
+			PersonalPaid       bool
+			IsAdminOrTreasurer bool
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -562,7 +588,7 @@ func startServer(db *sql.DB) {
 		}
 	})
 
-		http.HandleFunc("/chama/my-chamas", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chama/my-chamas", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
@@ -579,7 +605,7 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("create-chama.html"))
 		tmpl.Execute(w, data)
 	})
-			http.HandleFunc("/chama/dashboard", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chama/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard?chama_id="+r.URL.Query().Get("chama_id"), http.StatusSeeOther)
 	})
 
@@ -605,7 +631,7 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 	})
 
-		http.HandleFunc("/chama/roster", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chama/roster", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
@@ -646,7 +672,7 @@ func startServer(db *sql.DB) {
 		tmpl := template.Must(template.ParseFiles("chama-roster.html"))
 		tmpl.Execute(w, data)
 	})
-		http.HandleFunc("/chama/invite", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chama/invite", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
