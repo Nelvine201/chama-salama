@@ -203,7 +203,6 @@ func startServer(db *sql.DB) {
 
 		tmpl := template.Must(template.ParseFiles("contribute.html"))
 		tmpl.Execute(w, data)
-		tmpl.Execute(w, data)
 	})
 
 	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
