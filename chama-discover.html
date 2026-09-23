@@ -53,4 +53,9 @@ function requestToJoin(){
   });
 }
 function closeAuth(){document.getElementById('authModal').classList.add('hidden');document.getElementById('authModal').classList.remove('flex')}
+const joinId=new URLSearchParams(window.location.search).get('join');
+if(joinId){
+  const card=document.querySelector('[data-id="'+CSS.escape(joinId)+'"]');
+  if(card){openDetails(card)}
+}
 </script></body></html>
