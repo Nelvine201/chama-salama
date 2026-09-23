@@ -90,6 +90,7 @@ func main() {
 		"ALTER TABLE group_settings ADD COLUMN till_number TEXT",
 		"ALTER TABLE group_settings ADD COLUMN treasurer_phone TEXT",
 		"ALTER TABLE group_settings ADD COLUMN treasurer_account_name TEXT",
+		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
 	}
 	for _, stmt := range newColumns {
 		_, err := db.Exec(stmt)
@@ -98,6 +99,28 @@ func main() {
 		}
 	}
 	fmt.Println("Profile system columns ensured.")
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS chama_join_requests (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		chama_id INTEGER NOT NULL,
+		member_id INTEGER NOT NULL,
+		phone TEXT NOT NULL,
+		note TEXT,
+		agreed_to_rules INTEGER NOT NULL DEFAULT 0,
+		status TEXT NOT NULL DEFAULT 'pending',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		reviewed_at DATETIME,
+		reviewed_by INTEGER
+	)`)
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS notifications (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		member_id INTEGER NOT NULL,
+		title TEXT NOT NULL,
+		message TEXT NOT NULL,
+		type TEXT NOT NULL DEFAULT 'system',
+		read_at DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`)
+
 
 	var chamaCount int
 	db.QueryRow("SELECT COUNT(*) FROM chamas").Scan(&chamaCount)
