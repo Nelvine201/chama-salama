@@ -1,19 +1,7 @@
-      {{range .Cards}}
-      <div class="chama-row" style="display:block; padding:16px 0;">
-        <div style="display:flex; justify-content:space-between;">
-          <strong>{{.ChamaName}}</strong>
-          <span class="chama-role">{{.Role}}</span>
-        </div>
-        <p style="font-size:13px; color:#555; margin:6px 0;">{{.MemberCount}} Members · Your Turn: #{{.QueuePosition}} of {{.MemberCount}}</p>
-        <p style="font-size:13px; color:#555; margin:6px 0;">Next payout: {{.NextRecipientName}}{{if .NextPayoutDate}} on {{.NextPayoutDate}}{{end}}</p>
-        <p style="font-size:13px; margin:6px 0;">{{if .ContributionPaid}}<span style="color:#2f7a52; font-weight:bold;">Paid</span>{{else}}<span style="color:#c96f4a; font-weight:bold;">Pending KES {{.ContributionAmount}}</span>{{end}}</p>
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <a href="/chama/dashboard?chama_id={{.ChamaID}}" style="flex:1; text-align:center; background:#1f5c3d; color:#fbf8f1; padding:8px; border-radius:6px; text-decoration:none; font-size:13px;">Open Dashboard</a>
-          {{if eq .Role "admin"}}
-          <a href="/chama/roster?chama_id={{.ChamaID}}" style="flex:1; text-align:center; background:transparent; border:1px solid #1f5c3d; color:#1f5c3d; padding:8px; border-radius:6px; text-decoration:none; font-size:13px;">Manage Invites {{if .PendingInviteCount}}({{.PendingInviteCount}}){{end}}</a>
-          {{end}}
-        </div>
-      </div>
-      {{else}}
-      <p style="color: #999; font-size: 14px;">You are not part of any Chama yet.</p>
-      {{end}}
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Chamas</title><script src="https://cdn.tailwindcss.com"></script></head><body class="min-h-screen bg-[#fbf8f1] text-[#26241f]">
+<header class="border-b border-[#e6c258]/30 bg-[#f4efe2]"><div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4"><a href="/dashboard" class="font-bold text-[#1f5c3d]">Chama Salama</a><div class="flex gap-2"><a href="/chama/discover" class="rounded-lg border border-[#1f5c3d] px-3 py-2 text-xs font-semibold text-[#1f5c3d]">Browse Public Chamas</a><a href="/chama/create-page" class="rounded-lg bg-[#1f5c3d] px-3 py-2 text-xs font-semibold text-[#fbf8f1]">+ Create Chama</a></div></div></header>
+<main class="mx-auto max-w-5xl px-4 py-8"><div class="mb-6"><h1 class="text-2xl font-bold text-[#1f5c3d]">My Chamas</h1><p class="text-sm text-[#26241f]/60">Your savings groups and contribution activity.</p></div>
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+<a href="/chama/create-page" class="flex min-h-48 items-center justify-center rounded-2xl border-2 border-dashed border-[#1f5c3d]/40 bg-transparent p-5 text-center"><span class="font-semibold text-[#1f5c3d]">+ Create New Chama</span></a>
+{{range .Cards}}<div class="rounded-2xl bg-[#f4efe2] p-5 shadow-sm"><div class="flex justify-between"><strong class="text-[#1f5c3d]">{{.ChamaName}}</strong><span class="text-xs font-semibold uppercase text-[#2f7a52]">{{.Role}}</span></div><p class="mt-2 text-sm text-[#26241f]/65">{{.MemberCount}} Members · Your Turn #{{.QueuePosition}}</p><p class="mt-2 text-sm">{{if .ContributionPaid}}<span class="font-semibold text-[#2f7a52]">Paid</span>{{else}}<span class="font-semibold text-[#c96f4a]">Pending KES {{.ContributionAmount}}</span>{{end}}</p><div class="mt-4 flex gap-2"><a href="/chama/dashboard?chama_id={{.ChamaID}}" class="flex-1 rounded-lg bg-[#1f5c3d] px-3 py-2 text-center text-xs font-semibold text-[#fbf8f1]">Open</a>{{if eq .Role "admin"}}<a href="/chama/member-requests?chama_id={{.ChamaID}}" class="flex-1 rounded-lg border border-[#1f5c3d] px-3 py-2 text-center text-xs font-semibold text-[#1f5c3d]">Member Requests{{if .PendingInviteCount}} ({{.PendingInviteCount}}){{end}}</a>{{end}}</div></div>{{else}}<div class="rounded-2xl bg-[#f4efe2] p-6 text-sm text-[#26241f]/60">You are not part of any Chama yet. Use Browse Public Chamas above to request to join one.</div>{{end}}
+</div><a href="/chama/pending-requests" class="mt-6 inline-block text-sm font-semibold text-[#2f7a52]">View My Pending Requests →</a></main></body></html>
