@@ -103,3 +103,30 @@ CREATE TABLE IF NOT EXISTS cycles (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chama_id) REFERENCES chamas(id)
 );
+
+CREATE TABLE IF NOT EXISTS chama_join_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chama_id INTEGER NOT NULL,
+    member_id INTEGER NOT NULL,
+    phone TEXT NOT NULL,
+    note TEXT,
+    agreed_to_rules INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME,
+    reviewed_by INTEGER,
+    FOREIGN KEY (chama_id) REFERENCES chamas(id),
+    FOREIGN KEY (member_id) REFERENCES members(id),
+    FOREIGN KEY (reviewed_by) REFERENCES members(id)
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'system',
+    read_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);
