@@ -470,6 +470,7 @@ func startServer(db *sql.DB) {
 		recipientName, _, queuePos := GetPayoutQueueInfo(db, activeChamaID, memberID)
 		cycleSummary, _ := GetCycleSummary(db, activeChamaID)
 		userSummary, _ := GetUserCycleSummary(db, activeChamaID, memberID)
+		pendingRequests, _ := GetMyJoinRequests(db, memberID)
 
 		var paidCount int
 		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", activeChamaID, memberID).Scan(&paidCount)
@@ -493,6 +494,7 @@ func startServer(db *sql.DB) {
 			IsAdminOrTreasurer bool
 			Cycle              *CycleSummary
 			UserCycle          *UserCycleSummary
+			PendingRequests    []JoinRequest
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -509,6 +511,7 @@ func startServer(db *sql.DB) {
 			IsAdminOrTreasurer: isAdminOrTreasurer,
 			Cycle:              cycleSummary,
 			UserCycle:          userSummary,
+			PendingRequests:    pendingRequests,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
