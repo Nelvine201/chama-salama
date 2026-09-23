@@ -8,24 +8,352 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen bg-gray-100 px-4 py-6">
-    <div class="mx-auto w-full max-w-xl">
-        <div class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+<body class="min-h-screen bg-gray-100 px-3 py-5 sm:px-5 sm:py-8">
 
-            <!-- your existing heading and form stay here -->
+    <div class="mx-auto w-full max-w-2xl">
 
-            <form action="/chama/create" method="POST">
-                <!-- keep all your existing fields -->
+        <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
 
-                <button
-                    type="submit"
-                    class="mt-5 w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
+            <!-- Header -->
+            <div class="mb-5">
+                <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">
                     Create Chama
-                </button>
+                </h1>
+                <p class="mt-1 text-sm text-gray-500">
+                    Set up your chama and contribution rules.
+                </p>
+            </div>
+
+            <form action="/chama/create" method="POST" class="space-y-5">
+
+                <!-- Basic Information -->
+                <div>
+                    <h2 class="mb-3 text-sm font-semibold text-gray-800">
+                        Basic Information
+                    </h2>
+
+                    <div class="space-y-3">
+
+                        <div>
+                            <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+                                Chama Name
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                required
+                                placeholder="e.g. Umoja Savings Group"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="description" class="mb-1 block text-sm font-medium text-gray-700">
+                                Description
+                            </label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                rows="2"
+                                placeholder="Brief description of your chama"
+                                class="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            ></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                            <div>
+                                <label for="start_date" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Start Date
+                                </label>
+                                <input
+                                    type="date"
+                                    id="start_date"
+                                    name="start_date"
+                                    required
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="max_participants" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Max Participants
+                                </label>
+                                <input
+                                    type="number"
+                                    id="max_participants"
+                                    name="max_participants"
+                                    min="2"
+                                    required
+                                    placeholder="e.g. 20"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                        </div>
+
+                        <div>
+                            <label for="approval_threshold" class="mb-1 block text-sm font-medium text-gray-700">
+                                Approval Threshold
+                            </label>
+                            <input
+                                type="number"
+                                id="approval_threshold"
+                                name="approval_threshold"
+                                min="1"
+                                value="1"
+                                required
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                            <p class="mt-1 text-xs text-gray-400">
+                                Number of approvals required for group actions.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Contribution Settings -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h2 class="mb-3 text-sm font-semibold text-gray-800">
+                        Contribution Settings
+                    </h2>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                        <div>
+                            <label for="contribution_amount" class="mb-1 block text-sm font-medium text-gray-700">
+                                Contribution Amount
+                            </label>
+                            <input
+                                type="number"
+                                id="contribution_amount"
+                                name="contribution_amount"
+                                min="1"
+                                step="0.01"
+                                required
+                                placeholder="e.g. 1000"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="frequency" class="mb-1 block text-sm font-medium text-gray-700">
+                                Frequency
+                            </label>
+                            <select
+                                id="frequency"
+                                name="frequency"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="weekly">Weekly</option>
+                                <option value="biweekly">Biweekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="number_of_rounds" class="mb-1 block text-sm font-medium text-gray-700">
+                                Number of Rounds
+                            </label>
+                            <input
+                                type="number"
+                                id="number_of_rounds"
+                                name="number_of_rounds"
+                                min="1"
+                                required
+                                value="1"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="payout_method" class="mb-1 block text-sm font-medium text-gray-700">
+                                Payout Method
+                            </label>
+                            <select
+                                id="payout_method"
+                                name="payout_method"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="fixed_rotation">Fixed Rotation</option>
+                                <option value="random_lottery">Random Lottery</option>
+                                <option value="bidding">Bidding</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Penalties and Welfare -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h2 class="mb-3 text-sm font-semibold text-gray-800">
+                        Penalties & Welfare
+                    </h2>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                        <div>
+                            <label for="grace_period_days" class="mb-1 block text-sm font-medium text-gray-700">
+                                Grace Period (Days)
+                            </label>
+                            <input
+                                type="number"
+                                id="grace_period_days"
+                                name="grace_period_days"
+                                min="0"
+                                value="0"
+                                required
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="late_penalty_type" class="mb-1 block text-sm font-medium text-gray-700">
+                                Late Penalty Type
+                            </label>
+                            <select
+                                id="late_penalty_type"
+                                name="late_penalty_type"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="none">None</option>
+                                <option value="fixed">Fixed Amount</option>
+                                <option value="percentage">Percentage</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="late_penalty_amount" class="mb-1 block text-sm font-medium text-gray-700">
+                                Late Penalty Amount
+                            </label>
+                            <input
+                                type="number"
+                                id="late_penalty_amount"
+                                name="late_penalty_amount"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="welfare_reserve_amount" class="mb-1 block text-sm font-medium text-gray-700">
+                                Welfare Reserve
+                            </label>
+                            <input
+                                type="number"
+                                id="welfare_reserve_amount"
+                                name="welfare_reserve_amount"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Payout Destination -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h2 class="mb-3 text-sm font-semibold text-gray-800">
+                        Payout Destination
+                    </h2>
+
+                    <div class="space-y-3">
+
+                        <div>
+                            <label for="payout_destination_type" class="mb-1 block text-sm font-medium text-gray-700">
+                                Destination Type
+                            </label>
+                            <select
+                                id="payout_destination_type"
+                                name="payout_destination_type"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="">Select destination</option>
+                                <option value="paybill">Paybill</option>
+                                <option value="till">Till Number</option>
+                                <option value="treasurer">Treasurer</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                            <div>
+                                <label for="paybill_number" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Paybill Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="paybill_number"
+                                    name="paybill_number"
+                                    placeholder="Paybill number"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="till_number" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Till Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="till_number"
+                                    name="till_number"
+                                    placeholder="Till number"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="treasurer_phone" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Treasurer Phone
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="treasurer_phone"
+                                    name="treasurer_phone"
+                                    placeholder="e.g. 0712345678"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="treasurer_account_name" class="mb-1 block text-sm font-medium text-gray-700">
+                                    Treasurer Account Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="treasurer_account_name"
+                                    name="treasurer_account_name"
+                                    placeholder="Account name"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Create Button -->
+                <div class="border-t border-gray-100 pt-5">
+                    <button
+                        type="submit"
+                        class="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Create Chama
+                    </button>
+                </div>
+
             </form>
 
         </div>
     </div>
+
 </body>
 </html>
