@@ -365,6 +365,7 @@ type ChamaCard struct {
 	ContributionPaid   bool
 	ContributionAmount float64
 	PendingInviteCount int
+	PendingJoinRequestCount int
 }
 
 func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
@@ -408,6 +409,7 @@ func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
 
 		if m.Role == "admin" {
 			db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'pending'", m.ChamaID).Scan(&c.PendingInviteCount)
+			db.QueryRow("SELECT COUNT(*) FROM chama_join_requests WHERE chama_id = ? AND status = 'pending'", m.ChamaID).Scan(&c.PendingJoinRequestCount)
 		}
 
 		cards = append(cards, c)
