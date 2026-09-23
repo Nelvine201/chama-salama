@@ -614,6 +614,16 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/dashboard?chama_id="+r.URL.Query().Get("chama_id"), http.StatusSeeOther)
 	})
 
+	http.HandleFunc("/chama/create-page", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		tmpl := template.Must(template.ParseFiles("chama-create-form.html"))
+		tmpl.Execute(w, nil)
+	})
+
 	http.HandleFunc("/chama/create", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
