@@ -1,6 +1,7 @@
 package main
 
-import (\n    "database/sql"
+import (
+    "database/sql"
     "encoding/json"
     "net/http"
     "net/url"
