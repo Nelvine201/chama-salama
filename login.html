@@ -94,7 +94,7 @@
   <main>
     <div class="card">
       <h2>Sign in</h2>
-      <form action="/login" method="POST">
+      <form action="/auth/login" method="POST"><input type="hidden" name="next" value="{{.Next}}">
         <label>Phone or email</label>
         <input type="text" name="identifier" required>
 
