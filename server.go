@@ -652,6 +652,10 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			next := "/chama/discover"
@@ -780,6 +784,10 @@ func startServer(db *sql.DB) {
 	http.HandleFunc("/chama/create", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
+			return
+		}
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
 			return
 		}
 
