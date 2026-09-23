@@ -17,11 +17,11 @@
 </article>{{end}}</div>{{else}}<div class="rounded-2xl bg-[#f4efe2] p-8 text-center"><h2 class="font-semibold text-[#1f5c3d]">No public Chamas yet</h2><p class="mt-1 text-sm text-[#26241f]/60">Create one and become the first group.</p><a href="/chama/create-page" class="mt-4 inline-block rounded-lg bg-[#1f5c3d] px-5 py-2.5 text-sm font-semibold text-[#fbf8f1]">Create New Chama</a></div>{{end}}</main>
 <div id="modal" class="fixed inset-0 hidden items-center justify-center bg-[#26241f]/50 p-4"><div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#fbf8f1] p-5">
 <div class="flex justify-between gap-4"><h2 id="mName" class="text-xl font-bold text-[#1f5c3d]"></h2><button onclick="closeDetails()" class="text-[#26241f]/60">✕</button></div><div id="mBody" class="mt-4 text-sm"></div>
-<form action="/chama/join" method="POST" class="mt-5 border-t border-[#26241f]/10 pt-5"><input type="hidden" id="mID" name="chama_id">
+<form id="joinForm" action="/chama/join" method="POST" class="mt-5 border-t border-[#26241f]/10 pt-5"><input type="hidden" id="mID" name="chama_id">
 <label class="text-sm font-medium">Phone number</label><input id="mPhone" name="phone" value="{{.Phone}}" required class="mt-1 w-full rounded-lg border border-[#26241f]/20 bg-white px-3 py-2.5">
 <label class="mt-3 block text-sm font-medium">Note to admin <span class="font-normal text-[#26241f]/50">(optional)</span></label><textarea name="note" rows="3" class="mt-1 w-full rounded-lg border border-[#26241f]/20 bg-white px-3 py-2.5"></textarea>
 <label class="mt-3 flex gap-2 text-sm"><input type="checkbox" name="agreed_to_rules" required class="mt-1"> <span>I agree to follow this Chama's group rules.</span></label>
-<button class="mt-5 w-full rounded-lg bg-[#1f5c3d] px-4 py-3 font-semibold text-[#fbf8f1]">Request to Join</button></form></div></div>
+<button type="button" onclick="requestToJoin()" class="mt-5 w-full rounded-lg bg-[#1f5c3d] px-4 py-3 font-semibold text-[#fbf8f1]">Request to Join</button></form></div></div>
 <script>
 function openDetails(button){
  const d=button.dataset;
@@ -32,4 +32,25 @@ function openDetails(button){
 }
 function closeDetails(){document.getElementById('modal').classList.add('hidden');document.getElementById('modal').classList.remove('flex')}
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+</script><div id="authModal" class="fixed inset-0 hidden items-center justify-center bg-[#26241f]/55 p-4 z-50">
+<div class="w-full max-w-sm rounded-2xl bg-[#fbf8f1] p-6 shadow-xl">
+<div class="flex justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-wide text-[#c96f4a]">Sign in required</p><h2 id="authTitle" class="mt-1 text-xl font-bold text-[#1f5c3d]">Log in or create an account</h2></div><button type="button" onclick="closeAuth()" class="text-[#26241f]/60">✕</button></div>
+<p id="authMessage" class="mt-3 text-sm leading-6 text-[#26241f]/70"></p>
+<div class="mt-5 grid gap-2">
+<a id="authLogin" href="/login-page" class="rounded-lg bg-[#1f5c3d] px-4 py-3 text-center text-sm font-semibold text-[#fbf8f1]">Log in</a>
+<a id="authSignup" href="/register-page" class="rounded-lg border border-[#1f5c3d] px-4 py-3 text-center text-sm font-semibold text-[#1f5c3d]">Create account</a>
+</div></div></div>
+<script>
+function requestToJoin(){
+  fetch('/auth/status').then(r=>r.json()).then(data=>{
+    if(data.authenticated){ document.getElementById('joinForm').submit(); return; }
+    const id=document.getElementById('mID').value;
+    const next='/chama/discover?join='+encodeURIComponent(id);
+    document.getElementById('authMessage').textContent='Log in or create an account to send your join request.';
+    document.getElementById('authLogin').href='/login-page?next='+encodeURIComponent(next);
+    document.getElementById('authSignup').href='/register-page?next='+encodeURIComponent(next);
+    document.getElementById('authModal').classList.remove('hidden'); document.getElementById('authModal').classList.add('flex');
+  });
+}
+function closeAuth(){document.getElementById('authModal').classList.add('hidden');document.getElementById('authModal').classList.remove('flex')}
 </script></body></html>
