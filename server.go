@@ -435,7 +435,8 @@ func startServer(db *sql.DB) {
 			return
 		}
 		if len(chamas) == 0 {
-			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+			tmpl := template.Must(template.ParseFiles("dashboard-empty.html"))
+			tmpl.Execute(w, struct{ FirstName string }{FirstName: firstName})
 			return
 		}
 
@@ -591,6 +592,115 @@ func startServer(db *sql.DB) {
 		} else {
 			fmt.Fprintln(w, "Approval recorded. Waiting for more signatures.")
 		}
+	})
+
+
+	http.HandleFunc("/chama/discover", func(w http.ResponseWriter, r *http.Request) {
+		_, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		chamas, err := GetPublicChamas(db)
+		if err != nil {
+			http.Error(w, "Failed to load public chamas", http.StatusInternalServerError)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("chama-discover.html"))
+		tmpl.Execute(w, struct{ Chamas []PublicChama }{Chamas: chamas})
+	})
+
+	http.HandleFunc("/chama/join", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid chama ID", http.StatusBadRequest)
+			return
+		}
+		if err := CreateJoinRequest(db, chamaID, memberID, strings.TrimSpace(r.FormValue("phone")),
+			strings.TrimSpace(r.FormValue("note")), r.FormValue("agreed_to_rules") == "on"); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, "/chama/pending-requests", http.StatusSeeOther)
+	})
+
+	http.HandleFunc("/chama/pending-requests", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		requests, err := GetMyJoinRequests(db, memberID)
+		if err != nil {
+			http.Error(w, "Failed to load requests", http.StatusInternalServerError)
+			return
+		}
+		tmpl := template.Must(template.ParseFiles("chama-pending-requests.html"))
+		tmpl.Execute(w, struct{ Requests []JoinRequest }{Requests: requests})
+	})
+
+	http.HandleFunc("/chama/member-requests", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		chamaID, err := strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid chama ID", http.StatusBadRequest)
+			return
+		}
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil || role != "admin" {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+		requests, err := GetAdminJoinRequests(db, chamaID)
+		if err != nil {
+			http.Error(w, "Failed to load member requests", http.StatusInternalServerError)
+			return
+		}
+		var chamaName string
+		db.QueryRow("SELECT name FROM chamas WHERE id = ?", chamaID).Scan(&chamaName)
+		tmpl := template.Must(template.ParseFiles("chama-member-requests.html"))
+		tmpl.Execute(w, struct {
+			ChamaID int64
+			ChamaName string
+			Requests []JoinRequest
+		}{chamaID, chamaName, requests})
+	})
+
+	http.HandleFunc("/chama/member-requests/review", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		requestID, err := strconv.ParseInt(r.FormValue("request_id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid request ID", http.StatusBadRequest)
+			return
+		}
+		chamaID := r.FormValue("chama_id")
+		approve := r.FormValue("action") == "approve"
+		if err := ReviewJoinRequest(db, requestID, memberID, approve); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, "/chama/member-requests?chama_id="+chamaID, http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/chama/my-chamas", func(w http.ResponseWriter, r *http.Request) {
