@@ -130,3 +130,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chama_membership_unique
+ON chama_members (chama_id, member_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_join_request_unique
+ON chama_join_requests (chama_id, member_id)
+WHERE status = 'pending';
