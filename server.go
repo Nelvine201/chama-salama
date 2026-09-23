@@ -367,6 +367,12 @@ func startServer(db *sql.DB) {
 		fmt.Fprintf(w, "Check your phone (%s) to complete the M-Pesa payment.", phone)
 	})
 	http.HandleFunc("/admin/set-settings", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
@@ -391,6 +397,12 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/admin/settings", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		settings, err := GetGroupSettings(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get group settings:", err)
@@ -407,6 +419,12 @@ func startServer(db *sql.DB) {
 		}
 	})
 	http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		members, err := GetAllMembers(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get members:", err)
