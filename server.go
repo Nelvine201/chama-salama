@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"net/url"
 )
 
 func startServer(db *sql.DB) {
 	http.Handle("/", http.FileServer(http.Dir("docs")))
+	registerAuthRoutes(db)
 
 	http.HandleFunc("/register-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("register.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ Next string }{Next: safeNextPath(r.URL.Query().Get("next"))})
 	})
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -41,7 +43,7 @@ func startServer(db *sql.DB) {
 	})
 	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("login.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ Next string }{Next: safeNextPath(r.URL.Query().Get("next"))})
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -606,11 +608,6 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/chama/discover", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
-		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
-			return
-		}
 		chamas, err := GetPublicChamas(db)
 		if err != nil {
 			http.Error(w, "Failed to load public chamas", http.StatusInternalServerError)
@@ -636,7 +633,9 @@ func startServer(db *sql.DB) {
 		}
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			next := "/chama/discover"
+			if id := r.FormValue("chama_id"); id != "" { next = "/chama/discover?chama_id=" + url.QueryEscape(id) }
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape(next), http.StatusSeeOther)
 			return
 		}
 		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
@@ -748,6 +747,10 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if _, err := getLoggedInMemberID(r, db); err != nil {
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape("/chama/create-page"), http.StatusSeeOther)
+			return
+		}
 
 		tmpl := template.Must(template.ParseFiles("chama-create-form.html"))
 		tmpl.Execute(w, nil)
@@ -761,7 +764,7 @@ func startServer(db *sql.DB) {
 
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape("/chama/create-page"), http.StatusSeeOther)
 			return
 		}
 
