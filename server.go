@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"net/url"
 )
 
 func startServer(db *sql.DB) {
 	http.Handle("/", http.FileServer(http.Dir("docs")))
+	registerAuthRoutes(db)
 
 	http.HandleFunc("/register-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("register.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ Next string }{Next: safeNextPath(r.URL.Query().Get("next"))})
 	})
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -41,7 +43,7 @@ func startServer(db *sql.DB) {
 	})
 	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.ParseFiles("login.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ Next string }{Next: safeNextPath(r.URL.Query().Get("next"))})
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -365,6 +367,12 @@ func startServer(db *sql.DB) {
 		fmt.Fprintf(w, "Check your phone (%s) to complete the M-Pesa payment.", phone)
 	})
 	http.HandleFunc("/admin/set-settings", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
@@ -389,6 +397,12 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/admin/settings", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		settings, err := GetGroupSettings(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get group settings:", err)
@@ -405,6 +419,12 @@ func startServer(db *sql.DB) {
 		}
 	})
 	http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
+		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
 		members, err := GetAllMembers(db)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get members:", err)
@@ -468,6 +488,7 @@ func startServer(db *sql.DB) {
 		recipientName, _, queuePos := GetPayoutQueueInfo(db, activeChamaID, memberID)
 		cycleSummary, _ := GetCycleSummary(db, activeChamaID)
 		userSummary, _ := GetUserCycleSummary(db, activeChamaID, memberID)
+		pendingRequests, _ := GetMyJoinRequests(db, memberID)
 
 		var paidCount int
 		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", activeChamaID, memberID).Scan(&paidCount)
@@ -491,6 +512,7 @@ func startServer(db *sql.DB) {
 			IsAdminOrTreasurer bool
 			Cycle              *CycleSummary
 			UserCycle          *UserCycleSummary
+			PendingRequests    []JoinRequest
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -507,6 +529,7 @@ func startServer(db *sql.DB) {
 			IsAdminOrTreasurer: isAdminOrTreasurer,
 			Cycle:              cycleSummary,
 			UserCycle:          userSummary,
+			PendingRequests:    pendingRequests,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
@@ -606,11 +629,6 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/chama/discover", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
-		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
-			return
-		}
 		chamas, err := GetPublicChamas(db)
 		if err != nil {
 			http.Error(w, "Failed to load public chamas", http.StatusInternalServerError)
@@ -634,9 +652,15 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			next := "/chama/discover"
+			if id := r.FormValue("chama_id"); id != "" { next = "/chama/discover?chama_id=" + url.QueryEscape(id) }
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape(next), http.StatusSeeOther)
 			return
 		}
 		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
@@ -748,6 +772,10 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if _, err := getLoggedInMemberID(r, db); err != nil {
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape("/chama/create-page"), http.StatusSeeOther)
+			return
+		}
 
 		tmpl := template.Must(template.ParseFiles("chama-create-form.html"))
 		tmpl.Execute(w, nil)
@@ -758,10 +786,14 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "Please submit this form using POST")
 			return
 		}
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
 
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			http.Redirect(w, r, "/login-page?next="+url.QueryEscape("/chama/create-page"), http.StatusSeeOther)
 			return
 		}
 
