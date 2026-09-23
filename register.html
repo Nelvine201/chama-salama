@@ -105,7 +105,7 @@
   <main>
     <div class="card">
       <h2>Create your account</h2>
-      <form action="/register" method="POST">
+      <form action="/auth/signup" method="POST"><input type="hidden" name="next" value="{{.Next}}">
         <label>Full name (as per ID)</label>
         <input type="text" name="name" required>
 
