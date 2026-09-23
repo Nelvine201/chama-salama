@@ -6,6 +6,7 @@ import (
     "net/http"
     "net/url"
     "strings"
+    "fmt"
 )
 
 func registerAuthRoutes(db *sql.DB) {
@@ -102,4 +103,25 @@ func registerAuthRoutes(db *sql.DB) {
         }
         http.Redirect(w, r, next, http.StatusSeeOther)
     })
+}
+
+
+func requireChamaRole(db *sql.DB, r *http.Request, chamaID int64, allowed ...string) (int64, error) {
+    memberID, err := getLoggedInMemberID(r, db)
+    if err != nil {
+        return 0, err
+    }
+    var role string
+    if err := db.QueryRow(
+        "SELECT role FROM chama_members WHERE chama_id = ? AND member_id = ? AND status = 'active'",
+        chamaID, memberID,
+    ).Scan(&role); err != nil {
+        return 0, err
+    }
+    for _, allowedRole := range allowed {
+        if role == allowedRole {
+            return memberID, nil
+        }
+    }
+    return 0, fmt.Errorf("forbidden")
 }
