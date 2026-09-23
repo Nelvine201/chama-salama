@@ -626,8 +626,70 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		name := r.FormValue("name")
-		_, err = CreateChama(db, name, memberID)
+		maxParticipants, err := strconv.Atoi(r.FormValue("max_participants"))
+		if err != nil {
+			fmt.Fprintln(w, "Invalid maximum participants")
+			return
+		}
+
+		numberOfRounds, err := strconv.Atoi(r.FormValue("number_of_rounds"))
+		if err != nil {
+			fmt.Fprintln(w, "Invalid number of rounds")
+			return
+		}
+
+		gracePeriodDays, err := strconv.Atoi(r.FormValue("grace_period_days"))
+		if err != nil {
+			fmt.Fprintln(w, "Invalid grace period")
+			return
+		}
+
+		approvalThreshold, err := strconv.Atoi(r.FormValue("approval_threshold"))
+		if err != nil {
+			fmt.Fprintln(w, "Invalid approval threshold")
+			return
+		}
+
+		contributionAmount, err := strconv.ParseFloat(r.FormValue("contribution_amount"), 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid contribution amount")
+			return
+		}
+
+		latePenaltyAmount, err := strconv.ParseFloat(r.FormValue("late_penalty_amount"), 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid late penalty amount")
+			return
+		}
+
+		welfareReserveAmount, err := strconv.ParseFloat(r.FormValue("welfare_reserve_amount"), 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid welfare reserve amount")
+			return
+		}
+
+		config := ChamaConfig{
+			Name:                  strings.TrimSpace(r.FormValue("name")),
+			Description:           strings.TrimSpace(r.FormValue("description")),
+			StartDate:             r.FormValue("start_date"),
+			MaxParticipants:       maxParticipants,
+			ContributionAmount:    contributionAmount,
+			Frequency:             r.FormValue("frequency"),
+			NumberOfRounds:        numberOfRounds,
+			PayoutMethod:          r.FormValue("payout_method"),
+			GracePeriodDays:       gracePeriodDays,
+			LatePenaltyType:       r.FormValue("late_penalty_type"),
+			LatePenaltyAmount:     latePenaltyAmount,
+			WelfareReserveAmount:  welfareReserveAmount,
+			ApprovalThreshold:     approvalThreshold,
+			PayoutDestinationType: r.FormValue("payout_destination_type"),
+			PaybillNumber:         strings.TrimSpace(r.FormValue("paybill_number")),
+			TillNumber:            strings.TrimSpace(r.FormValue("till_number")),
+			TreasurerPhone:        strings.TrimSpace(r.FormValue("treasurer_phone")),
+			TreasurerAccountName:  strings.TrimSpace(r.FormValue("treasurer_account_name")),
+		}
+
+		_, err = CreateChamaWithSettings(db, config, memberID)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to create chama:", err)
 			return

@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"log"
-	_ "modernc.org/sqlite"
 	"os"
 	"strings"
+
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -52,7 +53,7 @@ func main() {
 	}
 	fmt.Println("Database schema ensured.")
 
-		newColumns := []string{
+	newColumns := []string{
 		"ALTER TABLE members ADD COLUMN avatar_url TEXT",
 		"ALTER TABLE members ADD COLUMN preferred_first_name TEXT",
 		"ALTER TABLE members ADD COLUMN default_payout_method TEXT",
@@ -61,14 +62,34 @@ func main() {
 		"ALTER TABLE members ADD COLUMN next_of_kin_phone TEXT",
 		"ALTER TABLE members ADD COLUMN notify_sms INTEGER DEFAULT 1",
 		"ALTER TABLE members ADD COLUMN notify_email INTEGER DEFAULT 1",
+
+		"ALTER TABLE chamas ADD COLUMN description TEXT",
+		"ALTER TABLE chamas ADD COLUMN start_date TEXT",
+		"ALTER TABLE chamas ADD COLUMN max_participants INTEGER",
+
 		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
+
 		"ALTER TABLE contributions ADD COLUMN chama_id INTEGER",
-		"ALTER TABLE group_settings ADD COLUMN chama_id INTEGER",
-		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
-		"ALTER TABLE group_settings ADD COLUMN payout_position INTEGER DEFAULT 0",
-		"ALTER TABLE group_settings ADD COLUMN next_payout_date TEXT",
 		"ALTER TABLE contributions ADD COLUMN checkout_request_id TEXT",
 		"ALTER TABLE contributions ADD COLUMN cycle_id INTEGER",
+
+		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
+
+		"ALTER TABLE group_settings ADD COLUMN chama_id INTEGER",
+		"ALTER TABLE group_settings ADD COLUMN payout_position INTEGER DEFAULT 0",
+		"ALTER TABLE group_settings ADD COLUMN next_payout_date TEXT",
+		"ALTER TABLE group_settings ADD COLUMN number_of_rounds INTEGER DEFAULT 1",
+		"ALTER TABLE group_settings ADD COLUMN payout_method TEXT DEFAULT 'fixed_rotation'",
+		"ALTER TABLE group_settings ADD COLUMN grace_period_days INTEGER DEFAULT 0",
+		"ALTER TABLE group_settings ADD COLUMN late_penalty_type TEXT DEFAULT 'none'",
+		"ALTER TABLE group_settings ADD COLUMN late_penalty_amount REAL DEFAULT 0",
+		"ALTER TABLE group_settings ADD COLUMN welfare_reserve_amount REAL DEFAULT 0",
+		"ALTER TABLE group_settings ADD COLUMN approval_threshold INTEGER DEFAULT 1",
+		"ALTER TABLE group_settings ADD COLUMN payout_destination_type TEXT",
+		"ALTER TABLE group_settings ADD COLUMN paybill_number TEXT",
+		"ALTER TABLE group_settings ADD COLUMN till_number TEXT",
+		"ALTER TABLE group_settings ADD COLUMN treasurer_phone TEXT",
+		"ALTER TABLE group_settings ADD COLUMN treasurer_account_name TEXT",
 	}
 	for _, stmt := range newColumns {
 		_, err := db.Exec(stmt)
@@ -78,7 +99,7 @@ func main() {
 	}
 	fmt.Println("Profile system columns ensured.")
 
-		var chamaCount int
+	var chamaCount int
 	db.QueryRow("SELECT COUNT(*) FROM chamas").Scan(&chamaCount)
 	if chamaCount == 0 {
 		var firstMemberID int64
@@ -104,7 +125,6 @@ func main() {
 		db.Exec("UPDATE withdrawals SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
 		fmt.Println("Backfilled chama_id for existing records.")
 	}
-
 
 	startServer(db)
 }

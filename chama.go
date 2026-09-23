@@ -38,6 +38,171 @@ func CreateChama(db *sql.DB, name string, createdBy int64) (int64, error) {
 	return chamaID, nil
 }
 
+type ChamaConfig struct {
+	Name                  string
+	Description           string
+	StartDate             string
+	MaxParticipants       int
+	ContributionAmount    float64
+	Frequency             string
+	NumberOfRounds        int
+	PayoutMethod          string
+	GracePeriodDays       int
+	LatePenaltyType       string
+	LatePenaltyAmount     float64
+	WelfareReserveAmount  float64
+	ApprovalThreshold     int
+	PayoutDestinationType string
+	PaybillNumber         string
+	TillNumber            string
+	TreasurerPhone        string
+	TreasurerAccountName  string
+}
+
+func CreateChamaWithSettings(db *sql.DB, config ChamaConfig, createdBy int64) (int64, error) {
+	if config.Name == "" {
+		return 0, fmt.Errorf("chama name is required")
+	}
+
+	if config.MaxParticipants < 2 {
+		return 0, fmt.Errorf("maximum participants must be at least 2")
+	}
+
+	if config.ContributionAmount <= 0 {
+		return 0, fmt.Errorf("contribution amount must be greater than zero")
+	}
+
+	if config.NumberOfRounds <= 0 {
+		return 0, fmt.Errorf("number of rounds must be greater than zero")
+	}
+
+	if config.Frequency != "weekly" &&
+		config.Frequency != "biweekly" &&
+		config.Frequency != "monthly" {
+		return 0, fmt.Errorf("invalid contribution frequency")
+	}
+
+	if config.PayoutMethod != "fixed_rotation" &&
+		config.PayoutMethod != "random_lottery" &&
+		config.PayoutMethod != "bidding" {
+		return 0, fmt.Errorf("invalid payout method")
+	}
+
+	if config.GracePeriodDays < 0 {
+		return 0, fmt.Errorf("grace period cannot be negative")
+	}
+
+	if config.ApprovalThreshold < 1 {
+		return 0, fmt.Errorf("approval threshold must be at least 1")
+	}
+
+	if config.LatePenaltyType != "none" &&
+		config.LatePenaltyType != "fixed" &&
+		config.LatePenaltyType != "percentage" {
+		return 0, fmt.Errorf("invalid late penalty type")
+	}
+
+	if config.LatePenaltyType == "percentage" &&
+		(config.LatePenaltyAmount <= 0 || config.LatePenaltyAmount > 100) {
+		return 0, fmt.Errorf("late penalty percentage must be between 0 and 100")
+	}
+
+	if config.LatePenaltyType == "fixed" &&
+		config.LatePenaltyAmount <= 0 {
+		return 0, fmt.Errorf("fixed late penalty must be greater than zero")
+	}
+
+	if config.WelfareReserveAmount < 0 {
+		return 0, fmt.Errorf("welfare reserve cannot be negative")
+	}
+
+	if config.WelfareReserveAmount >= config.ContributionAmount {
+		return 0, fmt.Errorf("welfare reserve must be less than contribution amount")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
+		`INSERT INTO chamas
+			(name, description, start_date, max_participants, created_by)
+		 VALUES (?, ?, ?, ?, ?)`,
+		config.Name,
+		config.Description,
+		config.StartDate,
+		config.MaxParticipants,
+		createdBy,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	chamaID, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO group_settings (
+			chama_id,
+			contribution_amount,
+			frequency,
+			number_of_rounds,
+			payout_method,
+			grace_period_days,
+			late_penalty_type,
+			late_penalty_amount,
+			welfare_reserve_amount,
+			approval_threshold,
+			payout_destination_type,
+			paybill_number,
+			till_number,
+			treasurer_phone,
+			treasurer_account_name
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		chamaID,
+		config.ContributionAmount,
+		config.Frequency,
+		config.NumberOfRounds,
+		config.PayoutMethod,
+		config.GracePeriodDays,
+		config.LatePenaltyType,
+		config.LatePenaltyAmount,
+		config.WelfareReserveAmount,
+		config.ApprovalThreshold,
+		config.PayoutDestinationType,
+		config.PaybillNumber,
+		config.TillNumber,
+		config.TreasurerPhone,
+		config.TreasurerAccountName,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO chama_members
+			(chama_id, member_id, role, status)
+		 VALUES (?, ?, ?, ?)`,
+		chamaID,
+		createdBy,
+		"admin",
+		"active",
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return chamaID, nil
+}
+
 type ChamaMembership struct {
 	ChamaID   int64
 	ChamaName string

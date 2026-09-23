@@ -31,9 +31,25 @@ CREATE TABLE IF NOT EXISTS sync_queue (
 );
 CREATE TABLE IF NOT EXISTS group_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chama_id INTEGER NOT NULL,
     contribution_amount REAL NOT NULL,
     frequency TEXT NOT NULL,
-    payout_order TEXT
+    payout_order TEXT,
+    number_of_rounds INTEGER NOT NULL,
+    payout_method TEXT NOT NULL,
+    grace_period_days INTEGER NOT NULL DEFAULT 0,
+    late_penalty_type TEXT NOT NULL DEFAULT 'none',
+    late_penalty_amount REAL NOT NULL DEFAULT 0,
+    welfare_reserve_amount REAL NOT NULL DEFAULT 0,
+    approval_threshold INTEGER NOT NULL DEFAULT 1,
+    payout_destination_type TEXT,
+    paybill_number TEXT,
+    till_number TEXT,
+    treasurer_phone TEXT,
+    treasurer_account_name TEXT,
+    payout_position INTEGER DEFAULT 0,
+    next_payout_date TEXT,
+    FOREIGN KEY (chama_id) REFERENCES chamas(id)
 );
 CREATE TABLE IF NOT EXISTS withdrawals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +77,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS chamas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    description TEXT,
+    start_date TEXT,
+    max_participants INTEGER,
     created_by INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES members(id)

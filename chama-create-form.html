@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Chama</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+
+    <div class="max-w-4xl mx-auto px-6 py-10">
+
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold">Create a Chama</h1>
+            <p class="text-gray-600 mt-2">
+                Set up your Chama, contribution rules, payout method, and governance.
+            </p>
+        </div>
+
+        <form action="/chama/create" method="POST" class="space-y-8">
+
+            <!-- General Information -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">General Information</h2>
+
+                <div class="space-y-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Chama Name
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                            placeholder="e.g. LakeHub Savings Chama"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Description / Purpose
+                        </label>
+                        <textarea
+                            name="description"
+                            rows="3"
+                            class="w-full border rounded-lg px-4 py-2"
+                            placeholder="What is this Chama for?"
+                        ></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Start Date
+                        </label>
+                        <input
+                            type="date"
+                            name="start_date"
+                            required
+                            class="border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Capacity -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">Capacity & Governance</h2>
+
+                <div class="grid md:grid-cols-2 gap-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Maximum Participants
+                        </label>
+                        <input
+                            type="number"
+                            name="max_participants"
+                            min="2"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Approval Threshold
+                        </label>
+                        <input
+                            type="number"
+                            name="approval_threshold"
+                            min="1"
+                            value="1"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                        <p class="text-xs text-gray-500 mt-1">
+                            Number of approvals required for governed actions.
+                        </p>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Contributions -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">Contribution Settings</h2>
+
+                <div class="grid md:grid-cols-2 gap-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Contribution Amount (KES)
+                        </label>
+                        <input
+                            type="number"
+                            name="contribution_amount"
+                            min="1"
+                            step="0.01"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Frequency
+                        </label>
+                        <select
+                            name="frequency"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Bi-weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Number of Rounds
+                        </label>
+                        <input
+                            type="number"
+                            name="number_of_rounds"
+                            min="1"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Payout -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">Payout Settings</h2>
+
+                <div class="space-y-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Payout Method
+                        </label>
+
+                        <select
+                            name="payout_method"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                            <option value="fixed_rotation">Fixed Rotation</option>
+                            <option value="random_lottery">Random Lottery</option>
+                            <option value="bidding">Bidding / Auction</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Grace Period (Days)
+                        </label>
+                        <input
+                            type="number"
+                            name="grace_period_days"
+                            min="0"
+                            value="0"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Penalties -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">Penalties & Welfare</h2>
+
+                <div class="grid md:grid-cols-2 gap-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Late Penalty Type
+                        </label>
+
+                        <select
+                            name="late_penalty_type"
+                            required
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                            <option value="none">No Penalty</option>
+                            <option value="fixed">Fixed Amount</option>
+                            <option value="percentage">Percentage</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Late Penalty Amount
+                        </label>
+
+                        <input
+                            type="number"
+                            name="late_penalty_amount"
+                            min="0"
+                            step="0.01"
+                            value="0"
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Welfare Reserve (KES)
+                        </label>
+
+                        <input
+                            type="number"
+                            name="welfare_reserve_amount"
+                            min="0"
+                            step="0.01"
+                            value="0"
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Payout Destination -->
+            <section class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-xl font-semibold mb-5">Payout Destination</h2>
+
+                <div class="space-y-4">
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Destination Type
+                        </label>
+
+                        <select
+                            name="payout_destination_type"
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                            <option value="">Select destination</option>
+                            <option value="paybill">M-Pesa Paybill</option>
+                            <option value="till">M-Pesa Till</option>
+                            <option value="treasurer">Treasurer</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Paybill Number
+                        </label>
+                        <input
+                            type="text"
+                            name="paybill_number"
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Till Number
+                        </label>
+                        <input
+                            type="text"
+                            name="till_number"
+                            class="w-full border rounded-lg px-4 py-2"
+                        >
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                Treasurer Phone
+                            </label>
+                            <input
+                                type="text"
+                                name="treasurer_phone"
+                                class="w-full border rounded-lg px-4 py-2"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                Treasurer Account Name
+                            </label>
+                            <input
+                                type="text"
+                                name="treasurer_account_name"
+                                class="w-full border rounded-lg px-4 py-2"
+                            >
+                        </div>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <button
+                type="submit"
+                class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800"
+            >
+                Create Chama
+            </button>
+
+        </form>
+
+    </div>
+
+</body>
+</html>
