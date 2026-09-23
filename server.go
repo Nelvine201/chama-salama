@@ -595,6 +595,16 @@ func startServer(db *sql.DB) {
 	})
 
 
+
+	http.HandleFunc("/notifications", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil { http.Redirect(w, r, "/login-page", http.StatusSeeOther); return }
+		notifications, err := GetNotifications(db, memberID)
+		if err != nil { http.Error(w, "Failed to load notifications", http.StatusInternalServerError); return }
+		tmpl := template.Must(template.ParseFiles("notifications.html"))
+		tmpl.Execute(w, struct{ Notifications []Notification }{notifications})
+	})
+
 	http.HandleFunc("/chama/discover", func(w http.ResponseWriter, r *http.Request) {
 		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
