@@ -616,8 +616,17 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Failed to load public chamas", http.StatusInternalServerError)
 			return
 		}
+		phone := ""
+		if memberID, sessionErr := getLoggedInMemberID(r, db); sessionErr == nil {
+			if profile, profileErr := GetMemberProfile(db, memberID); profileErr == nil {
+				phone = profile.Phone.String
+			}
+		}
 		tmpl := template.Must(template.ParseFiles("chama-discover.html"))
-		tmpl.Execute(w, struct{ Chamas []PublicChama }{Chamas: chamas})
+		tmpl.Execute(w, struct {
+			Chamas []PublicChama
+			Phone  string
+		}{Chamas: chamas, Phone: phone})
 	})
 
 	http.HandleFunc("/chama/join", func(w http.ResponseWriter, r *http.Request) {
