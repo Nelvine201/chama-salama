@@ -87,24 +87,35 @@
       </form>
       {{end}}
 
-      <h1>Welcome, {{.FirstName}}!</h1>
+   <h1>Welcome, {{.FirstName}}!</h1>
       <p class="subtext">Track your savings and merry-go-round for {{.ActiveChamaName}}.</p>
+
+      <div class="section-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <p style="margin:0; font-size:13px; color:#555;">Cycle #{{.Cycle.CycleNumber}} · Due {{.Cycle.DueDate}}</p>
+          <p style="margin:4px 0 0; font-weight:bold;">
+            {{if .UserCycle.HasPaid}}<span class="status-synced">Paid</span>{{else}}<span class="status-pending">Pending KES {{.Cycle.TargetAmount}}</span>{{end}}
+          </p>
+        </div>
+        <button onclick="document.getElementById('stkModal').style.display='flex'" style="background:#1f5c3d; color:#fbf8f1; border:none; padding:10px 18px; border-radius:8px; font-weight:bold; cursor:pointer;">Pay Contribution via M-Pesa</button>
+      </div>
 
       <div class="stats">
         <div class="stat-card">
+          <p class="label">My Merry-Go-Round Turn</p>
+          <p class="value">Position #{{.UserCycle.QueuePosition}} of {{.UserCycle.TotalActive}}</p>
+          <p style="font-size:12px; color:#555; margin:4px 0;">Est. payout: {{.UserCycle.ExpectedPayoutDate}} · KES {{.UserCycle.ExpectedLumpSum}}</p>
+          <a href="/chama/roster?chama_id={{.ActiveChamaID}}" style="font-size:12px;">View Full Rotation</a>
+        </div>
+        <div class="stat-card">
           <p class="label">Group Pool</p>
-          <p class="value">KES {{.Balance}}</p>
-        </div>
-        <div class="stat-card">
-          <p class="label">Contribution Rate</p>
-          <p class="value">KES {{.Amount}} / {{.Frequency}}</p>
-        </div>
-        <div class="stat-card">
-          <p class="label">Your Status</p>
-          <p class="value {{if .PersonalPaid}}status-paid{{else}}status-pending-badge{{end}}">{{if .PersonalPaid}}PAID{{else}}PENDING{{end}}</p>
+          <p class="value">KES {{.Cycle.TotalCollected}} / {{.Cycle.TotalExpectedPool}}</p>
+          <p style="font-size:12px; color:#555; margin:4px 0;">Recipient: {{.Cycle.RecipientName}} · {{.Cycle.MembersPaidCount}}/{{.Cycle.TotalActive}} paid</p>
+          <div style="background:#e0dccf; border-radius:6px; height:6px; margin-top:6px;">
+            <div style="background:#2f7a52; height:6px; border-radius:6px; width:{{.Cycle.PercentPaid}}%;"></div>
+          </div>
         </div>
       </div>
-
       <div class="section-card">
         <h2>Merry-Go-Round Queue</h2>
         <p>Next recipient: <strong>{{.RecipientName}}</strong></p>
@@ -128,6 +139,20 @@
         {{else}}
         <p class="empty-state">No contributions yet. <a href="/contribute-page">Record the first one</a>.</p>
         {{end}}
+      </div>
+      <div id="stkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100;">
+        <div style="background:#fbf8f1; border-radius:10px; padding:24px; width:320px;">
+          <h2 style="margin-top:0;">Pay Contribution</h2>
+          <form action="/stk-push" method="POST">
+            <input type="hidden" name="chama_id" value="{{.ActiveChamaID}}">
+            <label style="display:block; font-size:13px; color:#555; margin-top:10px;">Amount (KES)</label>
+            <input type="number" name="amount" value="{{.Cycle.TargetAmount}}" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" required>
+            <label style="display:block; font-size:13px; color:#555; margin-top:10px;">Phone Number</label>
+            <input type="text" name="phone" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" required>
+            <button type="submit" style="width:100%; margin-top:16px; padding:10px; background:#1f5c3d; color:#fbf8f1; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Pay via M-Pesa</button>
+          </form>
+          <button onclick="document.getElementById('stkModal').style.display='none'" style="width:100%; margin-top:8px; padding:10px; background:transparent; border:1px solid #ccc; border-radius:8px; cursor:pointer;">Cancel</button>
+        </div>
       </div>
     </main>
   </div>

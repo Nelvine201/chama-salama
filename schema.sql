@@ -75,3 +75,12 @@ CREATE TABLE IF NOT EXISTS chama_members (
     FOREIGN KEY (chama_id) REFERENCES chamas(id),
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+CREATE TABLE IF NOT EXISTS cycles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chama_id INTEGER NOT NULL,
+    cycle_number INTEGER NOT NULL,
+    due_date TEXT NOT NULL,
+    recipient_member_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chama_id) REFERENCES chamas(id)
+);

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"time"
 )
 
 type Chama struct {
@@ -36,6 +37,7 @@ func CreateChama(db *sql.DB, name string, createdBy int64) (int64, error) {
 
 	return chamaID, nil
 }
+
 type ChamaMembership struct {
 	ChamaID   int64
 	ChamaName string
@@ -43,7 +45,7 @@ type ChamaMembership struct {
 }
 
 func GetMemberChamas(db *sql.DB, memberID int64) ([]ChamaMembership, error) {
-		rows, err := db.Query(
+	rows, err := db.Query(
 		`SELECT c.id, c.name, cm.role
 		 FROM chama_members cm
 		 JOIN chamas c ON cm.chama_id = c.id
@@ -73,7 +75,7 @@ type RosterMember struct {
 }
 
 func GetChamaRoster(db *sql.DB, chamaID int64) ([]RosterMember, error) {
-		rows, err := db.Query(
+	rows, err := db.Query(
 		`SELECT m.id, m.name, cm.role
 		 FROM chama_members cm
 		 JOIN members m ON cm.member_id = m.id
@@ -95,6 +97,7 @@ func GetChamaRoster(db *sql.DB, chamaID int64) ([]RosterMember, error) {
 	}
 	return roster, nil
 }
+
 func InviteMember(db *sql.DB, chamaID int64, identifier, role string) error {
 	member, _, err := getMemberByIdentifier(db, identifier)
 	if err != nil {
@@ -116,6 +119,7 @@ func InviteMember(db *sql.DB, chamaID int64, identifier, role string) error {
 	)
 	return err
 }
+
 func RespondToInvitation(db *sql.DB, chamaID, memberID int64, accept bool) error {
 	status := "declined"
 	if accept {
@@ -139,6 +143,7 @@ func RespondToInvitation(db *sql.DB, chamaID, memberID int64, accept bool) error
 	}
 	return nil
 }
+
 type PendingInvitation struct {
 	ChamaID   int64
 	ChamaName string
@@ -171,6 +176,7 @@ func GetPendingInvitations(db *sql.DB, memberID int64) (string, []PendingInvitat
 	}
 	return memberName, invitations, nil
 }
+
 func GetMemberRoleInChama(db *sql.DB, chamaID, memberID int64) (string, error) {
 	var role string
 	err := db.QueryRow(
@@ -182,6 +188,7 @@ func GetMemberRoleInChama(db *sql.DB, chamaID, memberID int64) (string, error) {
 	}
 	return role, nil
 }
+
 type ChamaCard struct {
 	ChamaID            int64
 	ChamaName          string
@@ -242,6 +249,7 @@ func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
 	}
 	return cards, nil
 }
+
 func GetGroupBalanceForChama(db *sql.DB, chamaID int64) (float64, error) {
 	var total float64
 	err := db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE chama_id = ? AND status = 'synced'", chamaID).Scan(&total)
@@ -289,4 +297,128 @@ func GetPayoutQueueInfo(db *sql.DB, chamaID, memberID int64) (recipientName stri
 		)`, chamaID, chamaID, memberID,
 	).Scan(&queuePos)
 	return
+}
+
+type CycleSummary struct {
+	CycleNumber       int
+	DueDate           string
+	TargetAmount      float64
+	TotalExpectedPool float64
+	TotalCollected    float64
+	RecipientName     string
+	MembersPaidCount  int
+	TotalActive       int
+	PercentPaid       int
+}
+
+type UserCycleSummary struct {
+	HasPaid            bool
+	QueuePosition      int
+	TotalActive        int
+	ExpectedLumpSum    float64
+	ExpectedPayoutDate string
+}
+
+func GetOrCreateCurrentCycle(db *sql.DB, chamaID int64) (int64, int, string, error) {
+	var cycleID int64
+	var cycleNumber int
+	var dueDate string
+	err := db.QueryRow(
+		"SELECT id, cycle_number, due_date FROM cycles WHERE chama_id = ? ORDER BY cycle_number DESC LIMIT 1",
+		chamaID,
+	).Scan(&cycleID, &cycleNumber, &dueDate)
+
+	if err == sql.ErrNoRows {
+		dueDate = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+		result, insertErr := db.Exec(
+			"INSERT INTO cycles (chama_id, cycle_number, due_date) VALUES (?, 1, ?)",
+			chamaID, dueDate,
+		)
+		if insertErr != nil {
+			return 0, 0, "", insertErr
+		}
+		cycleID, _ = result.LastInsertId()
+		return cycleID, 1, dueDate, nil
+	}
+	if err != nil {
+		return 0, 0, "", err
+	}
+	return cycleID, cycleNumber, dueDate, nil
+}
+
+func GetCycleSummary(db *sql.DB, chamaID int64) (*CycleSummary, error) {
+	cycleID, cycleNumber, dueDate, err := GetOrCreateCurrentCycle(db, chamaID)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalActive int
+	db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", chamaID).Scan(&totalActive)
+
+	var targetAmount float64
+	db.QueryRow("SELECT contribution_amount FROM group_settings WHERE chama_id = ? LIMIT 1", chamaID).Scan(&targetAmount)
+
+	var totalCollected float64
+	db.QueryRow(
+		"SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE chama_id = ? AND cycle_id = ? AND status = 'synced'",
+		chamaID, cycleID,
+	).Scan(&totalCollected)
+
+	var membersPaid int
+	db.QueryRow(
+		"SELECT COUNT(DISTINCT member_id) FROM contributions WHERE chama_id = ? AND cycle_id = ? AND status = 'synced'",
+		chamaID, cycleID,
+	).Scan(&membersPaid)
+
+	var recipientName sql.NullString
+	db.QueryRow(
+		`SELECT m.name FROM cycles c JOIN members m ON c.recipient_member_id = m.id WHERE c.id = ?`,
+		cycleID,
+	).Scan(&recipientName)
+
+	percentPaid := 0
+	if totalActive > 0 {
+		percentPaid = (membersPaid * 100) / totalActive
+	}
+
+	return &CycleSummary{
+		CycleNumber:       cycleNumber,
+		DueDate:           dueDate,
+		TargetAmount:      targetAmount,
+		TotalExpectedPool: targetAmount * float64(totalActive),
+		TotalCollected:    totalCollected,
+		RecipientName:     recipientName.String,
+		MembersPaidCount:  membersPaid,
+		TotalActive:       totalActive,
+		PercentPaid:       percentPaid,
+	}, nil
+}
+
+func GetUserCycleSummary(db *sql.DB, chamaID, memberID int64) (*UserCycleSummary, error) {
+	cycleID, _, _, err := GetOrCreateCurrentCycle(db, chamaID)
+	if err != nil {
+		return nil, err
+	}
+
+	var paidCount int
+	db.QueryRow(
+		"SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND cycle_id = ? AND member_id = ? AND status = 'synced'",
+		chamaID, cycleID, memberID,
+	).Scan(&paidCount)
+
+	_, position, totalActive := GetPayoutQueueInfo(db, chamaID, memberID)
+
+	var amount float64
+	db.QueryRow("SELECT contribution_amount FROM group_settings WHERE chama_id = ? LIMIT 1", chamaID).Scan(&amount)
+
+	var count int
+	db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", chamaID).Scan(&count)
+
+	return &UserCycleSummary{
+		HasPaid:            paidCount > 0,
+		QueuePosition:      position,
+		TotalActive:        count,
+		ExpectedLumpSum:    amount * float64(count),
+		ExpectedPayoutDate: time.Now().AddDate(0, 0, 7*totalActive).Format("2006-01-02"),
+	}, nil
 }

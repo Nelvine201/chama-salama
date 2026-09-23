@@ -71,7 +71,6 @@ func startServer(db *sql.DB) {
 			Path:     "/",
 		})
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-
 	})
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
@@ -466,6 +465,8 @@ func startServer(db *sql.DB) {
 		amount, frequency, _ := GetGroupSettingsForChama(db, activeChamaID)
 		contributions, _ := GetRecentContributionsForChama(db, activeChamaID, 10)
 		recipientName, _, queuePos := GetPayoutQueueInfo(db, activeChamaID, memberID)
+		cycleSummary, _ := GetCycleSummary(db, activeChamaID)
+		userSummary, _ := GetUserCycleSummary(db, activeChamaID, memberID)
 
 		var paidCount int
 		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", activeChamaID, memberID).Scan(&paidCount)
@@ -487,6 +488,8 @@ func startServer(db *sql.DB) {
 			QueuePosition      int
 			PersonalPaid       bool
 			IsAdminOrTreasurer bool
+			Cycle              *CycleSummary
+			UserCycle          *UserCycleSummary
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -501,6 +504,8 @@ func startServer(db *sql.DB) {
 			QueuePosition:      queuePos,
 			PersonalPaid:       personalPaid,
 			IsAdminOrTreasurer: isAdminOrTreasurer,
+			Cycle:              cycleSummary,
+			UserCycle:          userSummary,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
@@ -758,6 +763,60 @@ func startServer(db *sql.DB) {
 		}
 
 		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+	})
+	http.HandleFunc("/api/chama/summary", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Error(w, `{"error":"not logged in"}`, http.StatusUnauthorized)
+			return
+		}
+
+		chamaIDStr := r.URL.Query().Get("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, `{"error":"invalid chama id"}`, http.StatusBadRequest)
+			return
+		}
+
+		var chamaName string
+		db.QueryRow("SELECT name FROM chamas WHERE id = ?", chamaID).Scan(&chamaName)
+
+		cycle, err := GetCycleSummary(db, chamaID)
+		if err != nil {
+			http.Error(w, `{"error":"failed to load cycle"}`, http.StatusInternalServerError)
+
+			return
+		}
+		user, err := GetUserCycleSummary(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, `{"error":"failed to load user summary"}`, http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"chama_id":   chamaID,
+			"chama_name": chamaName,
+			"current_cycle": map[string]interface{}{
+				"cycle_number":             cycle.CycleNumber,
+				"due_date":                 cycle.DueDate,
+				"target_amount_per_member": cycle.TargetAmount,
+				"total_expected_pool":      cycle.TotalExpectedPool,
+				"total_collected_pool":     cycle.TotalCollected,
+				"active_recipient_name":    cycle.RecipientName,
+				"members_paid_count":       cycle.MembersPaidCount,
+				"total_active_members":     cycle.TotalActive,
+			},
+			"user_summary": map[string]interface{}{
+				"user_id":                memberID,
+				"has_paid_current_cycle": user.HasPaid,
+				"queue_position":         user.QueuePosition,
+				"expected_payout_date":   user.ExpectedPayoutDate,
+				"estimated_lump_sum":     user.ExpectedLumpSum,
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	})
 
 	fmt.Println("Server starting on http://localhost:8080")
