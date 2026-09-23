@@ -2,260 +2,635 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chama Salama</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Chama Salama makes chama contributions, payouts and records simple, transparent and secure.">
+  <title>Chama Salama — Save together. Manage with confidence.</title>
   <style>
+    :root {
+      --paper: #fbf8f1;
+      --weave: #f4efe2;
+      --forest: #1f5c3d;
+      --growth: #2f7a52;
+      --gold: #e6c258;
+      --clay: #c96f4a;
+      --ink: #26241f;
+      --muted: #6d6a61;
+      --line: rgba(38, 36, 31, .11);
+      --shadow: 0 18px 50px rgba(38, 36, 31, .10);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: sans-serif;
       margin: 0;
-      color: #26241f;
-      background-color: #fbf8f1;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.6;
     }
-    header {
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+
+    /* Navigation */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(251, 248, 241, .92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      min-height: 70px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 20px 40px;
-      border-bottom: 1px solid #ddd;
+      justify-content: space-between;
+      gap: 20px;
     }
-    nav a {
-      margin-left: 20px;
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
       text-decoration: none;
-      color: #1f5c3d;
-      font-weight: bold;
+      font-weight: 850;
+      letter-spacing: -.03em;
+      font-size: 1.05rem;
     }
-    main {
-      padding: 60px 40px;
-      max-width: 600px;
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      background: var(--weave);
+      box-shadow: inset 0 0 0 5px var(--paper);
     }
-
-    main h2 {
-      color: #1f5c3d;
+    .basket {
+      width: 23px;
+      height: 16px;
+      background: var(--growth);
+      border-radius: 3px 3px 10px 10px;
+      position: relative;
+      transform: translateY(2px);
     }
-    footer {
-      padding: 20px 40px;
-      border-top: 1px solid #ddd;
-      display: flex;
-      justify-content: space-between;
+    .basket::before {
+      content: "";
+      position: absolute;
+      width: 12px;
+      height: 8px;
+      border: 2px solid var(--growth);
+      border-bottom: 0;
+      border-radius: 10px 10px 0 0;
+      left: 50%;
+      top: -8px;
+      transform: translateX(-50%);
+    }
+    .nav-links { display: flex; align-items: center; gap: 26px; }
+    .nav-links a, .nav-actions a {
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 650;
+    }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--forest); }
+    .nav-actions { display: flex; align-items: center; gap: 14px; }
+    .login { color: var(--forest); }
+    .btn {
+      display: inline-flex;
       align-items: center;
-      font-size: 14px;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: .9rem;
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+      cursor: pointer;
     }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--forest); color: white; box-shadow: 0 8px 20px rgba(31,92,61,.18); }
+    .btn-primary:hover { box-shadow: 0 12px 28px rgba(31,92,61,.28), 0 0 0 4px rgba(230,194,88,.20); }
+    .btn-outline { border-color: rgba(31,92,61,.28); color: var(--forest); background: transparent; }
+    .btn-outline:hover { background: var(--weave); }
+    .menu-button { display: none; border: 0; background: none; padding: 8px; color: var(--forest); }
+    .menu-button span { display: block; width: 24px; height: 2px; background: currentColor; margin: 5px 0; }
 
-    footer a {
-      color: #1f5c3d;
+    /* Hero */
+    .hero { padding: 48px 0 30px; }
+    .hero-grid { display: grid; grid-template-columns: 1.03fr .97fr; gap: 48px; align-items: center; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: var(--weave);
+      color: var(--forest);
+      font-size: .76rem;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
     }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+    h1, h2, h3, p { margin-top: 0; }
+    .hero h1 {
+      font-size: clamp(2.65rem, 6vw, 4.75rem);
+      line-height: .99;
+      letter-spacing: -.065em;
+      max-width: 700px;
+      margin: 20px 0;
+    }
+    .hero h1 em { color: var(--growth); font-style: normal; }
+    .hero-copy { max-width: 610px; color: var(--muted); font-size: 1.05rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin: 27px 0; }
+    .trust-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .trust {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(244,239,226,.72);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: .72rem;
+      font-weight: 750;
+      color: var(--muted);
+    }
+    .trust b { color: var(--growth); font-size: .9rem; }
 
-    nav a:hover,
-    footer a:hover {
-      text-decoration: underline;
+    .hero-visual {
+      min-height: 500px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 30px;
+      background:
+        linear-gradient(145deg, rgba(31,92,61,.90), rgba(31,92,61,.55)),
+        radial-gradient(circle at 75% 20%, rgba(230,194,88,.42), transparent 30%),
+        var(--growth);
+      box-shadow: var(--shadow);
+      isolation: isolate;
+    }
+    .hero-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(45deg, rgba(255,255,255,.06) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,.04) 25%, transparent 25%);
+      background-size: 42px 42px;
+      opacity: .45;
+      z-index: -1;
+    }
+    .image-placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 30px;
+      color: rgba(255,255,255,.9);
+    }
+    .image-placeholder-inner { max-width: 280px; }
+    .image-icon {
+      width: 74px;
+      height: 74px;
+      margin: 0 auto 15px;
+      border: 1px solid rgba(255,255,255,.45);
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.10);
+      font-size: 1.8rem;
+    }
+    .image-placeholder strong { display: block; font-size: 1rem; }
+    .image-placeholder small { display: block; margin-top: 4px; opacity: .72; font-size: .78rem; }
+    .hero-card {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 15px;
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 18px;
+      background: rgba(251,248,241,.94);
+      box-shadow: 0 15px 35px rgba(0,0,0,.15);
+    }
+    .hero-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 11px; }
+    .mini-label { font-size: .7rem; color: var(--muted); font-weight: 750; }
+    .status { color: var(--growth); font-size: .72rem; font-weight: 850; }
+    .progress { height: 8px; background: var(--weave); border-radius: 99px; overflow: hidden; }
+    .progress span { display: block; height: 100%; width: 72%; background: var(--gold); border-radius: inherit; }
+    .hero-card-bottom { display: flex; justify-content: space-between; margin-top: 9px; font-size: .76rem; font-weight: 750; }
+
+    /* Impact */
+    .impact { margin: 26px 0 92px; background: var(--weave); border-radius: var(--radius); border: 1px solid var(--line); }
+    .impact-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .impact-item { padding: 22px; text-align: center; border-right: 1px solid var(--line); }
+    .impact-item:last-child { border-right: 0; }
+    .impact-item strong { display: block; color: var(--forest); font-size: .93rem; }
+    .impact-item span { color: var(--muted); font-size: .75rem; }
+
+    /* Sections */
+    .section { padding: 80px 0; }
+    .section-heading { max-width: 680px; margin-bottom: 42px; }
+    .section-kicker { color: var(--growth); font-size: .75rem; font-weight: 850; text-transform: uppercase; letter-spacing: .11em; }
+    .section h2 { font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -.045em; margin: 8px 0 13px; }
+    .section-heading p { color: var(--muted); margin: 0; }
+
+    .feature { display: grid; grid-template-columns: 1fr 1fr; gap: 55px; align-items: center; padding: 58px 0; border-top: 1px solid var(--line); }
+    .feature.reverse .feature-copy { order: 2; }
+    .feature.reverse .mockup-wrap { order: 1; }
+    .feature-copy h3 { font-size: 1.65rem; line-height: 1.15; margin-bottom: 12px; }
+    .feature-copy p { color: var(--muted); }
+    .feature-points { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 11px; }
+    .feature-points li { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; font-weight: 650; }
+    .check { flex: 0 0 23px; width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; background: var(--weave); color: var(--growth); font-size: .75rem; font-weight: 900; }
+
+    .mockup-wrap { display: flex; justify-content: center; }
+    .phone {
+      width: min(285px, 100%);
+      min-height: 490px;
+      padding: 12px;
+      border-radius: 32px;
+      background: #1e2822;
+      box-shadow: 0 25px 55px rgba(38,36,31,.20);
+    }
+    .phone-screen { min-height: 466px; border-radius: 23px; background: var(--paper); padding: 17px; overflow: hidden; }
+    .phone-notch { width: 70px; height: 16px; background: #1e2822; border-radius: 0 0 12px 12px; margin: -17px auto 17px; }
+    .phone-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .phone-title { font-size: .8rem; font-weight: 850; }
+    .avatar { width: 31px; height: 31px; border-radius: 50%; background: var(--gold); display: grid; place-items: center; color: var(--forest); font-size: .7rem; font-weight: 900; }
+    .balance { background: var(--forest); color: white; padding: 17px; border-radius: 17px; }
+    .balance small { opacity: .7; font-size: .66rem; }
+    .balance strong { display: block; font-size: 1.55rem; margin-top: 2px; }
+    .transaction { display: flex; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .tx-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--weave); display: grid; place-items: center; color: var(--growth); font-weight: 900; }
+    .tx-copy { flex: 1; }
+    .tx-copy strong, .tx-copy small { display: block; }
+    .tx-copy strong { font-size: .72rem; }
+    .tx-copy small { font-size: .64rem; color: var(--muted); }
+    .tx-amount { font-size: .72rem; font-weight: 850; color: var(--growth); }
+
+    .review-card { width: min(430px, 100%); background: var(--weave); border: 1px solid var(--line); border-radius: 22px; padding: 19px; box-shadow: var(--shadow); }
+    .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .review-header strong { font-size: .92rem; }
+    .pending { color: var(--clay); background: rgba(201,111,74,.12); border-radius: 999px; padding: 5px 8px; font-size: .66rem; font-weight: 850; }
+    .request { background: var(--paper); border: 1px solid var(--line); padding: 13px; border-radius: 15px; margin-top: 10px; }
+    .request-top { display: flex; align-items: center; gap: 9px; }
+    .request-info { flex: 1; }
+    .request-info strong { display: block; font-size: .78rem; }
+    .request-info small { color: var(--muted); font-size: .66rem; }
+    .request-actions { display: flex; gap: 7px; margin-top: 11px; }
+    .approve, .decline { border: 0; border-radius: 9px; padding: 8px 11px; font-size: .66rem; font-weight: 850; }
+    .approve { background: var(--forest); color: white; }
+    .decline { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+
+    .rotation { width: min(450px, 100%); background: var(--forest); color: white; border-radius: 24px; padding: 24px; box-shadow: var(--shadow); }
+    .rotation h4 { margin: 0 0 4px; font-size: 1rem; }
+    .rotation p { margin: 0 0 25px; color: rgba(255,255,255,.68); font-size: .72rem; }
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .round { text-align: center; }
+    .round-dot { width: 42px; height: 42px; border: 2px solid rgba(230,194,88,.45); border-radius: 50%; display: grid; place-items: center; margin: 0 auto 8px; color: var(--gold); font-size: .7rem; font-weight: 850; }
+    .round.active .round-dot { background: var(--gold); color: var(--forest); border-color: var(--gold); }
+    .round span { font-size: .62rem; color: rgba(255,255,255,.65); }
+
+    /* How it works */
+    .how { background: var(--weave); }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; }
+    .step { padding: 25px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; }
+    .step-number { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 12px; background: var(--forest); color: var(--gold); font-weight: 900; margin-bottom: 24px; }
+    .step h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .step p { color: var(--muted); font-size: .86rem; margin: 0; }
+
+    /* Community */
+    .community-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 20px; }
+    .testimonial, .community-image { background: var(--weave); border: 1px solid var(--line); border-radius: 24px; padding: 28px; }
+    .stars { color: var(--gold); letter-spacing: 3px; font-size: .9rem; }
+    .quote { font-size: clamp(1.35rem, 3vw, 1.9rem); line-height: 1.25; letter-spacing: -.025em; margin: 18px 0 25px; }
+    .person { display: flex; align-items: center; gap: 11px; }
+    .person-avatar { width: 43px; height: 43px; border-radius: 50%; background: var(--growth); color: white; display: grid; place-items: center; font-weight: 850; }
+    .person strong, .person small { display: block; }
+    .person strong { font-size: .82rem; }
+    .person small { color: var(--muted); font-size: .7rem; }
+    .community-image { min-height: 330px; display: grid; place-items: center; text-align: center; background: var(--forest); color: white; position: relative; overflow: hidden; }
+    .community-image::after { content: ""; position: absolute; width: 230px; height: 230px; border: 1px solid rgba(230,194,88,.4); border-radius: 50%; }
+    .community-image p { position: relative; z-index: 1; max-width: 220px; color: rgba(255,255,255,.75); font-size: .78rem; }
+    .community-image strong { display: block; color: var(--gold); font-size: 1.1rem; margin-bottom: 4px; }
+
+    /* CTA + footer */
+    .final-cta { padding: 25px 0 95px; }
+    .cta-box { background: var(--forest); color: white; border-radius: 28px; padding: 55px 30px; text-align: center; position: relative; overflow: hidden; }
+    .cta-box::before { content: ""; position: absolute; width: 230px; height: 230px; border: 1px solid rgba(230,194,88,.3); border-radius: 50%; top: -150px; right: -70px; }
+    .cta-box h2 { position: relative; margin-bottom: 10px; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.045em; }
+    .cta-box p { position: relative; color: rgba(255,255,255,.7); margin-bottom: 24px; }
+    .cta-box .btn { position: relative; background: var(--gold); color: var(--forest); }
+    footer { border-top: 1px solid var(--line); padding: 23px 0 85px; color: var(--muted); font-size: .78rem; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+    footer a { color: var(--forest); font-weight: 750; text-decoration: none; }
+
+    .mobile-cta { display: none; }
+
+    @media (max-width: 820px) {
+      .nav-links, .nav-actions { display: none; }
+      .menu-button { display: block; }
+      .hero { padding-top: 30px; }
+      .hero-grid, .feature, .community-grid { grid-template-columns: 1fr; gap: 35px; }
+      .hero-visual { min-height: 430px; }
+      .feature.reverse .feature-copy, .feature.reverse .mockup-wrap { order: initial; }
+      .impact-grid { grid-template-columns: repeat(2, 1fr); }
+      .impact-item:nth-child(2) { border-right: 0; }
+      .impact-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .steps { grid-template-columns: 1fr; }
+      .section { padding: 65px 0; }
+      .final-cta { padding-bottom: 30px; }
+      .mobile-cta {
+        display: block;
+        position: fixed;
+        z-index: 40;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        background: rgba(251,248,241,.94);
+        backdrop-filter: blur(14px);
+        border-top: 1px solid var(--line);
+      }
+      .mobile-cta .btn { width: 100%; }
+      footer { padding-bottom: 85px; }
     }
 
     @media (max-width: 500px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      main {
-        padding: 40px 20px;
-      }
-    }
-    .features {
-      padding: 60px 40px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .features h2 {
-      color: #1f5c3d;
-      text-align: center;
-    }
-
-    .features > p {
-      text-align: center;
-      max-width: 500px;
-      margin: 10px auto 40px;
-      color: #555;
-    }
-
-    .feature-list {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .feature-item {
-      background: #f4efe2;
-      border-radius: 10px;
-      padding: 24px;
-      flex: 1;
-      min-width: 220px;
-    }
-
-    .feature-item h3 {
-      color: #1f5c3d;
-      margin-bottom: 8px;
-    }
-    .about {
-      background: #f4efe2;
-      padding: 60px 40px;
-      text-align: center;
-    }
-
-    .about h2 {
-      color: #1f5c3d;
-    }
-
-    .about p {
-      max-width: 600px;
-      margin: 12px auto;
-      color: #555;
-    }
-
-    .cta {
-      text-align: center;
-      background: #1f5c3d;
-      color: #fbf8f1;
-      padding: 60px 40px;
-    }
-
-    .cta h2 {
-      color: #e6c258;
-    }
-
-    .cta .btn-solid {
-      display: inline-block;
-      background: #e6c258;
-      color: #1f5c3d;
-      padding: 12px 24px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
-      margin-top: 16px;
-    }.hero {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 40px;
-      padding: 80px 40px;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .hero-text {
-      max-width: 550px;
-    }
-
-    .hero-heading {
-      font-size: 42px;
-      line-height: 1.15;
-      color: #1f5c3d;
-      margin-bottom: 20px;
-    }
-
-    .hero-heading .highlight {
-      color: #c96f4a;
-    }
-
-    .hero-lead {
-      color: #555;
-      font-size: 16px;
-      margin-bottom: 28px;
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 12px;
-    }
-
-    .hero-buttons .btn-solid {
-      background: #1f5c3d;
-      color: #fbf8f1;
-      padding: 12px 24px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .hero-buttons .btn-ghost {
-      background: transparent;
-      color: #26241f;
-      border: 1px solid #ddd;
-      padding: 12px 24px;
+      .container { width: min(100% - 24px, 1120px); }
+      .nav { min-height: 62px; }
+      .brand-mark { width: 36px; height: 36px; }
+      .brand { font-size: .95rem; }
+      .hero h1 { font-size: 2.72rem; }
+      .hero-copy { font-size: .96rem; }
+      .hero-actions { display: grid; grid-template-columns: 1fr; }
+      .hero-actions .btn { width: 100%; }
+      .hero-visual { min-height: 390px; border-radius: 24px; }
+      .impact { margin-bottom: 40px; border-radius: 18px; }
+      .impact-item { padding: 17px 10px; }
+      .impact-item strong { font-size: .75rem; }
+      .impact-item span { font-size: .65rem; }
+      .feature { padding: 45px 0; }
+      .phone { width: 270px; }
+      .testimonial, .community-image { padding: 22px; }
+      .community-image { min-height: 270px; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>
-      <svg width="45" height="45" viewBox="0 0 100 100" style="vertical-align: middle; margin-right: 8px;">
-        <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
-        <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
-        <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
-        <circle cx="50" cy="42" r="4" fill="#e6c258"/>
-      </svg>
-      Chama Salama
-    </h1>
-    <nav>
-      <a href="https://chama-salama.onrender.com/login-page" class="btn-ghost">Sign in</a>
-      <a href="https://chama-salama.onrender.com/register-page" class="btn-solid">Sign up</a>
-    </nav>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Chama Salama home">
+        <span class="brand-mark"><span class="basket"></span></span>
+        <span>Chama Salama</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#security">Security</a>
+        <a href="https://chama-salama.onrender.com/chama/discover">Browse Chamas</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="login" href="https://chama-salama.onrender.com/login-page">Login</a>
+        <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page">+ Start a Chama</a>
+      </div>
+
+      <button class="menu-button" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </header>
 
-  <section class="hero">
-    <div class="hero-text">
-      <h1 class="hero-heading">
-        Every contribution, <span class="highlight">counted</span>.<br>
-        Every member, <span class="highlight">trusted</span>.
-      </h1>
-      <p class="hero-lead">Chama Salama keeps your savings group's contributions, payouts, and withdrawals in one honest record — whether you're online at the office or offline at a village meeting.</p>
-      <div class="hero-buttons">
-        <a href="#cta" class="btn-solid">Get started</a>
-        <a href="#cta" class="btn-ghost">See how it works</a>
-      </div>
+  <div id="mobile-menu" hidden style="position:fixed;inset:62px 0 0;z-index:45;background:var(--paper);padding:24px 16px;border-top:1px solid var(--line);">
+    <div class="container" style="display:grid;gap:10px;">
+      <a href="#how-it-works" class="btn btn-outline" onclick="toggleMenu()">How it works</a>
+      <a href="#features" class="btn btn-outline" onclick="toggleMenu()">Features</a>
+      <a href="#security" class="btn btn-outline" onclick="toggleMenu()">Security</a>
+      <a href="https://chama-salama.onrender.com/chama/discover" class="btn btn-outline">Browse Public Chamas</a>
+      <a href="https://chama-salama.onrender.com/login-page" class="btn btn-outline">Login</a>
+      <a href="https://chama-salama.onrender.com/chama/create-page" class="btn btn-primary">+ Start a Chama</a>
     </div>
-    <div class="hero-logo">
-      <svg width="200" height="200" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="3"/>
-        <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
-        <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
-        <circle cx="50" cy="42" r="4" fill="#e6c258"/>
-      </svg>
+  </div>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow"><span class="eyebrow-dot"></span> Built for real Kenyan chamas</span>
+          <h1>Transparent, stress-free chama management <em>right from your phone.</em></h1>
+          <p class="hero-copy">Automate M-Pesa contributions, keep a clear ledger, and make payouts accountable — even when your group meeting happens offline.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page">Create Your Chama <span>→</span></a>
+            <a class="btn btn-outline" href="https://chama-salama.onrender.com/chama/discover">Explore Public Chamas</a>
+          </div>
+          <div class="trust-row" aria-label="Platform capabilities">
+            <span class="trust"><b>✓</b> M-Pesa ready</span>
+            <span class="trust"><b>✓</b> Offline ledger sync</span>
+            <span class="trust"><b>✓</b> Shared payout approval</span>
+          </div>
+        </div>
+
+        <div class="hero-visual" role="img" aria-label="Placeholder for a photo of Kenyan friends or entrepreneurs managing a chama around a table">
+          <div class="image-placeholder">
+            <div class="image-placeholder-inner">
+              <div class="image-icon">◎</div>
+              <strong>Community photo placeholder</strong>
+              <small>Replace with a warm, authentic photo of chama members around a table with a phone.</small>
+            </div>
+          </div>
+          <div class="hero-card">
+            <div class="hero-card-top"><span class="mini-label">Kisumu Growth Circle</span><span class="status">● On track</span></div>
+            <div class="progress"><span></span></div>
+            <div class="hero-card-bottom"><span>18 of 25 contributions</span><span>72%</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container">
+      <section class="impact" aria-label="Chama Salama benefits">
+        <div class="impact-grid">
+          <div class="impact-item"><strong>100% Automated</strong><span>reconciliation</span></div>
+          <div class="impact-item"><strong>Zero Lost Receipts</strong><span>clear digital records</span></div>
+          <div class="impact-item"><strong>Shared Authorization</strong><span>for payouts</span></div>
+          <div class="impact-item"><strong>Offline Meeting Support</strong><span>sync when connected</span></div>
+        </div>
+      </section>
     </div>
-  </section>
 
-  <section class="features">
-    <h2>Built for how chamas actually meet</h2>
-    <p>No formal office, no dependable connection — just a treasurer,trust, and now, a record that doesn't get lost.</p>
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-kicker">Less chasing. More trust.</span>
+          <h2>Everything your chama needs to stay organized.</h2>
+          <p>Designed around the way savings groups actually work — contributions, members, meetings, rotation and accountability.</p>
+        </div>
 
-    <div class="feature-list">
-      <div class="feature-item">
-        <h3>Works offline</h3>
-        <p>Record contributions with zero signal. Everything quietly syncs the moment you're back online.</p>
-      </div>
-      <div class="feature-item">
-        <h3>Payout rotation, visible</h3>
-        <p>Always know whose turn is next — no more arguing over who received the pot last.</p>
-      </div>
-      <div class="feature-item">
-        <h3>Withdrawals need agreement</h3>
-        <p>No single person can move money out — every withdrawal waits for multiple members to sign off.</p>
-      </div>
-    </div>
-  </section>
-  <section class="about">
-    <h2>Why we're building this</h2>
-    <p>Most chamas in Kenya still run on notebooks, WhatsApp threads, and memory. It works — until someone forgets who paid, or a meeting happens somewhere the internet doesn't reach.</p>
-    <p>Chama Salama keeps the record straight either way, syncs contributions automatically when you're online, and needs more than one signature before money leaves the pot.</p>
-  </section>
+        <article class="feature">
+          <div class="feature-copy">
+            <span class="section-kicker">01 / Contributions</span>
+            <h3>Automated M-Pesa contributions, matched to your ledger.</h3>
+            <p>Reduce manual updates and receipt disputes. Contributions can be reconciled into a shared record so members can see what has been received.</p>
+            <ul class="feature-points">
+              <li><span class="check">✓</span> Contribution history stays visible</li>
+              <li><span class="check">✓</span> M-Pesa workflow ready for integration</li>
+              <li><span class="check">✓</span> Records designed to sync after offline meetings</li>
+            </ul>
+          </div>
+          <div class="mockup-wrap">
+            <div class="phone" aria-label="Mobile contribution dashboard mockup">
+              <div class="phone-screen">
+                <div class="phone-notch"></div>
+                <div class="phone-head"><span class="phone-title">My Chama</span><span class="avatar">NO</span></div>
+                <div class="balance"><small>Total contributed</small><strong>KSh 18,500</strong><small>18 / 25 members paid</small></div>
+                <div class="transaction"><span class="tx-icon">↗</span><span class="tx-copy"><strong>Contribution received</strong><small>Today · M-Pesa</small></span><span class="tx-amount">+ KSh 500</span></div>
+                <div class="transaction"><span class="tx-icon">↗</span><span class="tx-copy"><strong>Contribution received</strong><small>Yesterday · M-Pesa</small></span><span class="tx-amount">+ KSh 500</span></div>
+                <div class="transaction"><span class="tx-icon">↗</span><span class="tx-copy"><strong>Contribution received</strong><small>Mon · M-Pesa</small></span><span class="tx-amount">+ KSh 500</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
 
-  <section class="cta" id="cta">
-    <h2>Bring your chama online — on your terms</h2>
-    <p>Free to use. Built for groups, not for banks.</p>
-    <a href="#" class="btn-solid">Create your chama's account</a>
-  </section>
+        <article class="feature reverse" id="security">
+          <div class="feature-copy">
+            <span class="section-kicker">02 / Governance</span>
+            <h3>Request-to-join and transparent decisions.</h3>
+            <p>Members can request to join public chamas, while admins get a clear review queue. Important group decisions can follow your agreed approval process.</p>
+            <ul class="feature-points">
+              <li><span class="check">✓</span> Review membership requests in one place</li>
+              <li><span class="check">✓</span> Keep member status and decisions visible</li>
+              <li><span class="check">✓</span> Build payout approvals around shared responsibility</li>
+            </ul>
+          </div>
+          <div class="mockup-wrap">
+            <div class="review-card">
+              <div class="review-header"><strong>Member Review Queue</strong><span class="pending">2 pending</span></div>
+              <div class="request">
+                <div class="request-top"><span class="avatar">AO</span><span class="request-info"><strong>Ann Achieng</strong><small>Request to join · 10 min ago</small></span></div>
+                <div class="request-actions"><button class="approve">Approve</button><button class="decline">Review details</button></div>
+              </div>
+              <div class="request">
+                <div class="request-top"><span class="avatar" style="background:var(--growth);color:white;">BM</span><span class="request-info"><strong>Brian Otieno</strong><small>Request to join · 31 min ago</small></span></div>
+                <div class="request-actions"><button class="approve">Approve</button><button class="decline">Review details</button></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature">
+          <div class="feature-copy">
+            <span class="section-kicker">03 / Rotation</span>
+            <h3>Flexible payout cycles and welfare reserves.</h3>
+            <p>Set the contribution amount, frequency, rounds and payout method that fit your group. Keep the next turn visible instead of relying on memory.</p>
+            <ul class="feature-points">
+              <li><span class="check">✓</span> Clear rotation order</li>
+              <li><span class="check">✓</span> Configurable rounds and contribution rules</li>
+              <li><span class="check">✓</span> Welfare reserve support for your group settings</li>
+            </ul>
+          </div>
+          <div class="mockup-wrap">
+            <div class="rotation">
+              <h4>Monthly rotation</h4>
+              <p>5 members · KSh 2,500 each · Next payout in 12 days</p>
+              <div class="timeline">
+                <div class="round"><div class="round-dot">01</div><span>Mary</span></div>
+                <div class="round active"><div class="round-dot">02</div><span>Brian</span></div>
+                <div class="round"><div class="round-dot">03</div><span>Ann</span></div>
+                <div class="round"><div class="round-dot">04</div><span>Otieno</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section how" id="how-it-works">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-kicker">How it works</span>
+          <h2>From joining the group to receiving your turn.</h2>
+        </div>
+        <div class="steps">
+          <article class="step">
+            <div class="step-number">01</div>
+            <h3>Create or request to join</h3>
+            <p>Set up your chama rules, or browse public groups and send a join request with the details your group requires.</p>
+          </article>
+          <article class="step">
+            <div class="step-number">02</div>
+            <h3>Members contribute</h3>
+            <p>Track contributions in a shared ledger and keep everyone aligned on what has been paid and what is due.</p>
+          </article>
+          <article class="step">
+            <div class="step-number">03</div>
+            <h3>Approve and pay out</h3>
+            <p>Use your agreed approval process for payouts, with the rotation and records available to the group.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container community-grid">
+        <article class="testimonial">
+          <div class="stars">★★★★★</div>
+          <p class="quote">“The goal is simple: everyone should understand where the money is, who has contributed, and what happens next.”</p>
+          <div class="person">
+            <div class="person-avatar">TO</div>
+            <span><strong>Community treasurer</strong><small>Kisumu Savings Circle</small></span>
+          </div>
+        </article>
+        <div class="community-image" role="img" aria-label="Placeholder for a community photo">
+          <div>
+            <strong>Your chama, your way.</strong>
+            <p>Community image placeholder — add real member photography here to make the story feel local and human.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="container">
+        <div class="cta-box">
+          <h2>Bring your chama online, on your terms.</h2>
+          <p>Simple tools for groups that want a clearer record and more accountable decisions.</p>
+          <a class="btn" href="https://chama-salama.onrender.com/chama/create-page">Start Your Chama Free →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="mobile-cta">
+    <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page">Start Your Chama Free</a>
+  </div>
+
   <footer>
-    <p>&copy; 2026 Chama Salama</p>
-    <a href="terms.html">Terms and conditions</a>
+    <div class="container footer-inner">
+      <span>© 2026 Chama Salama</span>
+      <a href="terms.html">Terms and conditions</a>
+    </div>
   </footer>
+
+  <script>
+    function toggleMenu() {
+      const menu = document.getElementById("mobile-menu");
+      const button = document.querySelector(".menu-button");
+      const open = !menu.hidden;
+      menu.hidden = open;
+      button.setAttribute("aria-expanded", String(!open));
+    }
+  </script>
+</body>
 </html>
