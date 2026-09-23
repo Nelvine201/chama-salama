@@ -48,12 +48,16 @@
       </div>
       <a href="/dashboard?chama_id={{.ActiveChamaID}}" class="active">Dashboard</a>
       <a href="/chama/my-chamas">My Chamas</a>
+      <a href="/chama/create-page">+ Create Chama</a>
+      <a href="/chama/discover">Discover Chamas</a>
+      <a href="/chama/pending-requests">My Join Requests</a>
       <a href="/contribute-page">Contribute</a>
       <a href="/withdraw/request-page">Request Withdrawal</a>
 
       {{if .IsAdminOrTreasurer}}
       <div class="section-label">Admin only</div>
       <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Manage Members</a>
+      <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Member Requests</a>
       <a href="/withdraw/approve-page">Approve Withdrawal</a>
       {{end}}
     </nav>
