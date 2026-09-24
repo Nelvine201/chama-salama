@@ -404,7 +404,7 @@
 
       <div class="nav-actions">
         <a class="login" href="https://chama-salama.onrender.com/login-page">Login</a>
-        <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">+ Start a Chama</a>
+        <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">Create Your Chama <span>→</span></a>
       </div>
 
       <button class="menu-button" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" onclick="toggleMenu()">
@@ -420,8 +420,7 @@
       <a href="#security" class="btn btn-outline" onclick="toggleMenu()">Security</a>
       <a href="https://chama-salama.onrender.com/chama/discover" class="btn btn-outline">Browse Public Chamas</a>
       <a href="https://chama-salama.onrender.com/login-page" class="btn btn-outline">Login</a>
-      <a href="https://chama-salama.onrender.com/chama/create-page" class="btn btn-primary">+ Start a Chama</a>
-    </div>
+      <a href="https://chama-salama.onrender.com/chama/create-page" class="btn btn-primary" data-auth-action="create">+ Start a Chama</a>    </div>
   </div>
 
   <main>
@@ -606,16 +605,14 @@
         <div class="cta-box">
           <h2>Bring your chama online, on your terms.</h2>
           <p>Simple tools for groups that want a clearer record and more accountable decisions.</p>
-          <a class="btn" href="https://chama-salama.onrender.com/chama/create-page">Start Your Chama Free →</a>
+          <a class="btn" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">Start Your Chama Free →</a>
         </div>
       </div>
     </section>
   </main>
-
-  <div class="mobile-cta">
-    <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page">Start Your Chama Free</a>
-  </div>
-
+<div class="mobile-cta">
+  <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">Start Your Chama Free</a>
+</div>
   <footer>
     <div class="container footer-inner">
       <span>© 2026 Chama Salama</span>
@@ -651,7 +648,7 @@
 <script>
 document.querySelectorAll('[data-auth-action="create"]').forEach(el=>el.addEventListener('click',function(e){
   e.preventDefault();
-  fetch('https://chama-salama.onrender.com/auth/status').then(r=>r.json()).then(data=>{
+  fetch('/auth/status').then(r=>r.json()).then(data=>{
     if(data.authenticated){window.location.href=this.href;return}
     const next='/chama/create-page';
     document.getElementById('landingAuthMessage').textContent='Sign up or Log in in 30 seconds to set up your Chama.';
