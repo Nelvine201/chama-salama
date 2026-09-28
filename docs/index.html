@@ -420,8 +420,8 @@
       </nav>
 
       <div class="nav-actions">
-        <a class="login" href="https://chama-salama.onrender.com/login-page">Login</a>
-        <a class="btn btn-primary" href="https://chama-salama.onrender.com/register-page">Sign up</a>
+        <a class="login" href="https://chama-salama.onrender.com/login-page">Sign in</a>
+        <a class="login" href="https://chama-salama.onrender.com/register-page">Sign up</a>
       </div>
 
       <button class="menu-button" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" onclick="toggleMenu()">
@@ -436,8 +436,8 @@
       <a href="#features" class="btn btn-outline" onclick="toggleMenu()">Features</a>
       <a href="#security" class="btn btn-outline" onclick="toggleMenu()">Security</a>
       <a href="https://chama-salama.onrender.com/chama/discover" class="btn btn-outline">Browse Public Chamas</a>
-      <a href="https://chama-salama.onrender.com/login-page" class="btn btn-outline">Login</a>
-      <a href="https://chama-salama.onrender.com/chama/create-page" class="btn btn-primary" data-auth-action="create">+ Start a Chama</a>    </div>
+      <a href="https://chama-salama.onrender.com/login-page" class="btn btn-outline">Sign in</a>
+      <a href="https://chama-salama.onrender.com/register-page" class="btn btn-outline">Sign up</a>    </div>
   </div>
 
   <main>
@@ -448,7 +448,6 @@
           <h1>Transparent, stress-free chama management <em>right from your phone.</em></h1>
           <p class="hero-copy">Automate M-Pesa contributions, keep a clear ledger, and make payouts accountable - even when your group meeting happens offline.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page">Create Your Chama <span>→</span></a>
             <a class="btn btn-outline" href="https://chama-salama.onrender.com/chama/discover">Explore Public Chamas</a>
           </div>
           <div class="trust-row" aria-label="Platform capabilities">
@@ -624,14 +623,10 @@
         <div class="cta-box">
           <h2>Bring your chama online, on your terms.</h2>
           <p>Simple tools for groups that want a clearer record and more accountable decisions.</p>
-          <a class="btn" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">Start Your Chama Free →</a>
         </div>
       </div>
     </section>
   </main>
-<div class="mobile-cta">
-  <a class="btn btn-primary" href="https://chama-salama.onrender.com/chama/create-page" data-auth-action="create">Start Your Chama Free</a>
-</div>
   <footer>
     <div class="container footer-inner">
       <span>© 2026 Chama Salama</span>
@@ -648,34 +643,5 @@
       button.setAttribute("aria-expanded", String(!open));
     }
   </script>
-<div id="landingAuth" class="auth-overlay" aria-hidden="true">
-<div class="auth-modal">
-<button class="auth-close" onclick="closeLandingAuth()" aria-label="Close">×</button>
-<p class="auth-kicker">Sign in required</p><h2>Continue with Chama Salama</h2>
-<p id="landingAuthMessage">Sign up or Log in in 30 seconds to set up your Chama.</p>
-<div class="auth-actions"><a id="landingLogin" href="/login-page">Log in</a><a id="landingSignup" href="/register-page">Create account</a></div>
-</div></div>
-<style>
-.auth-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(38,36,31,.55);z-index:1000}
-.auth-overlay.open{display:flex}.auth-modal{position:relative;width:min(100%,390px);background:#fbf8f1;border-radius:22px;padding:28px;box-shadow:0 24px 70px rgba(38,36,31,.25)}
-.auth-close{position:absolute;right:16px;top:12px;border:0;background:transparent;font-size:28px;color:#26241f;cursor:pointer}
-.auth-kicker{margin:0 0 6px;color:#c96f4a;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}
-.auth-modal h2{margin:0;color:#1f5c3d;font-size:25px}.auth-modal p:not(.auth-kicker){color:#26241f;opacity:.72;line-height:1.6}
-.auth-actions{display:grid;gap:10px;margin-top:20px}.auth-actions a{display:block;text-align:center;text-decoration:none;padding:13px 16px;border-radius:12px;font-weight:800}
-.auth-actions a:first-child{background:#1f5c3d;color:#fbf8f1}.auth-actions a:last-child{border:1px solid #1f5c3d;color:#1f5c3d}
-</style>
-<script>
-document.querySelectorAll('[data-auth-action="create"]').forEach(el=>el.addEventListener('click',function(e){
-  e.preventDefault();
-  fetch('/auth/status').then(r=>r.json()).then(data=>{
-    if(data.authenticated){window.location.href=this.href;return}
-    const next='/chama/create-page';
-    document.getElementById('landingAuthMessage').textContent='Sign up or Log in in 30 seconds to set up your Chama.';
-    document.getElementById('landingLogin').href='/login-page?next='+encodeURIComponent(next);
-    document.getElementById('landingSignup').href='/register-page?next='+encodeURIComponent(next);
-    document.getElementById('landingAuth').classList.add('open');
-  }).catch(()=>{window.location.href=this.href});
-}));
-function closeLandingAuth(){document.getElementById('landingAuth').classList.remove('open')}
-</script></body>
+</body>
 </html>
