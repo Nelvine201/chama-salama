@@ -494,6 +494,9 @@ func startServer(db *sql.DB) {
 		userSummary, _ := GetUserCycleSummary(db, activeChamaID, memberID)
 		pendingRequests, _ := GetMyJoinRequests(db, memberID)
 
+		var unreadNotifications int
+		db.QueryRow("SELECT COUNT(*) FROM notifications WHERE member_id = ? AND read_at IS NULL", memberID).Scan(&unreadNotifications)
+
 		var paidCount int
 		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", activeChamaID, memberID).Scan(&paidCount)
 		personalPaid := paidCount > 0
@@ -517,6 +520,7 @@ func startServer(db *sql.DB) {
 			Cycle              *CycleSummary
 			UserCycle          *UserCycleSummary
 			PendingRequests    []JoinRequest
+			UnreadNotifications int
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -534,6 +538,7 @@ func startServer(db *sql.DB) {
 			Cycle:              cycleSummary,
 			UserCycle:          userSummary,
 			PendingRequests:    pendingRequests,
+			UnreadNotifications: unreadNotifications,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
