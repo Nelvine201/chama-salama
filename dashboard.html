@@ -92,7 +92,7 @@
       <a href="/chama/discover">Discover Groups</a>
       <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Rotation Schedule</a>
       {{if .IsAdminOrTreasurer}}
-      <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Admin Settings &amp; Approvals{{if .PendingAdminCount}} <strong>({{.PendingAdminCount}})</strong>{{end}}</a>
+      <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Admin Settings &amp; Approvals</a>
       {{end}}
     </nav>
   </aside>
@@ -187,7 +187,7 @@
         <div class="quick">
           <a href="/withdraw/request-page?chama_id={{.ActiveChamaID}}">Request Withdrawal</a>
           <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Group Rules &amp; Fines</a>
-          {{if .IsAdminOrTreasurer}}<a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Review Pending Members{{if .PendingAdminCount}} ({{.PendingAdminCount}}){{end}}</a>{{end}}
+          {{if .IsAdminOrTreasurer}}<a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Review Pending Members</a>{{end}}
         </div>
       </article>
     </section>
