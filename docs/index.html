@@ -140,7 +140,7 @@
     .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
     h1, h2, h3, p { margin-top: 0; }
     .hero h1 {
-      font-size: clamp(2.65rem, 6vw, 4.75rem);
+      font-size: clamp(2.2rem, 4.5vw, 3.6rem);
       line-height: .99;
       letter-spacing: -.065em;
       max-width: 700px;
@@ -163,6 +163,14 @@
       color: var(--muted);
     }
     .trust b { color: var(--growth); font-size: .9rem; }
+    .hero-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+}
 
     .hero-visual {
       min-height: 500px;
@@ -176,7 +184,16 @@
       box-shadow: var(--shadow);
       isolation: isolate;
     }
+    .hero-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+}
     .hero-visual::before {
+      z-index: -1;
       content: "";
       position: absolute;
       inset: 0;
@@ -370,7 +387,7 @@
       .nav { min-height: 62px; }
       .brand-mark { width: 36px; height: 36px; }
       .brand { font-size: .95rem; }
-      .hero h1 { font-size: 2.72rem; }
+      .hero h1 { font-size: 2.25rem; }
       .hero-copy { font-size: .96rem; }
       .hero-actions { display: grid; grid-template-columns: 1fr; }
       .hero-actions .btn { width: 100%; }
@@ -427,7 +444,7 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <span class="eyebrow"><span class="eyebrow-dot"></span> Built for real Kenyan chamas</span>
+          <!--<span class="eyebrow"><span class="eyebrow-dot"></span> Built for real Kenyan chamas</span>-->
           <h1>Transparent, stress-free chama management <em>right from your phone.</em></h1>
           <p class="hero-copy">Automate M-Pesa contributions, keep a clear ledger, and make payouts accountable — even when your group meeting happens offline.</p>
           <div class="hero-actions">
@@ -441,14 +458,12 @@
           </div>
         </div>
 
-        <div class="hero-visual" role="img" aria-label="Placeholder for a photo of Kenyan friends or entrepreneurs managing a chama around a table">
-          <div class="image-placeholder">
-            <div class="image-placeholder-inner">
-              <div class="image-icon">◎</div>
-              <strong>Community photo placeholder</strong>
-              <small>Replace with a warm, authentic photo of chama members around a table with a phone.</small>
-            </div>
-          </div>
+        <div class="hero-visual">
+  <img
+    class="hero-photo"
+    src="assets/images/hero-community.jpg"
+    alt="Chama members meeting together"
+  >
           <div class="hero-card">
             <div class="hero-card-top"><span class="mini-label">Kisumu Growth Circle</span><span class="status">● On track</span></div>
             <div class="progress"><span></span></div>
@@ -591,7 +606,7 @@
             <span><strong>Community treasurer</strong><small>Kisumu Savings Circle</small></span>
           </div>
         </article>
-        <div class="community-image" role="img" aria-label="Placeholder for a community photo">
+        <div class="hero-community.jpg" role="img" aria-label="Placeholder for a community photo">
           <div>
             <strong>Your chama, your way.</strong>
             <p>Community image placeholder — add real member photography here to make the story feel local and human.</p>
