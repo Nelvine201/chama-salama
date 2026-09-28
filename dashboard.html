@@ -2,175 +2,216 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chama Salama — Dashboard</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: sans-serif; margin: 0; color: #26241f; background-color: #fbf8f1; }
-    .layout { display: flex; min-height: 100vh; }
-    nav.sidebar { width: 220px; background: #1f5c3d; color: #fbf8f1; padding: 24px 0; flex-shrink: 0; }
-    .sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 0 20px 20px; margin-bottom: 10px; border-bottom: 1px solid rgba(251,248,241,0.15); }
-    .sidebar .brand span { font-weight: bold; font-size: 16px; }
-    .sidebar a { display: block; color: #f4efe2; text-decoration: none; padding: 12px 20px; font-size: 14px; }
-    .sidebar a:hover { background: rgba(251,248,241,0.1); }
-    .sidebar a.active { background: rgba(251,248,241,0.15); font-weight: bold; border-left: 3px solid #e6c258; }
-    .sidebar .section-label { padding: 16px 20px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(251,248,241,0.5); }
-    main { flex: 1; padding: 40px; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    select.chama-select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; background: #fff; }
-    h1 { color: #1f5c3d; font-size: 22px; margin: 0 0 4px; }
-    .subtext { color: #555; margin: 0 0 30px; }
-    .stats { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-card { background: #f4efe2; border-radius: 10px; padding: 20px; flex: 1; min-width: 180px; }
-    .stat-card p.label { font-size: 13px; color: #555; margin: 0 0 6px; }
-    .stat-card p.value { font-size: 22px; font-weight: bold; color: #1f5c3d; margin: 0; }
-    .status-paid { color: #2f7a52; }
-    .status-pending-badge { color: #c96f4a; }
-    .section-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
-    h2 { color: #1f5c3d; font-size: 16px; margin-top: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-    .status-synced { color: #2f7a52; font-weight: bold; }
-    .status-pending { color: #c96f4a; font-weight: bold; }
-    .empty-state { color: #999; font-size: 14px; padding: 20px 0; text-align: center; }
+    :root {
+      --paper:#fbf8f1; --weave:#f4efe2; --forest:#1f5c3d;
+      --growth:#2f7a52; --gold:#e6c258; --clay:#c96f4a; --ink:#26241f;
+      --muted:#716e66; --line:#e4ded1; --white:#fffdf8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,sans-serif}
+    a{color:inherit}
+    .layout{min-height:100vh;display:flex}
+    .sidebar{width:230px;flex-shrink:0;background:var(--forest);color:var(--paper);padding:22px 12px;position:fixed;inset:0 auto 0 0}
+    .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;border-bottom:1px solid rgba(255,255,255,.14);font-weight:700}
+    .brand svg{flex:none}
+    .nav{padding-top:16px}
+    .nav a{display:flex;align-items:center;gap:10px;padding:11px 12px;margin:3px 0;border-radius:9px;text-decoration:none;font-size:14px;color:#f4efe2}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.11)}
+    .nav a.active{border-left:3px solid var(--gold);padding-left:9px;font-weight:700}
+    main{margin-left:230px;width:calc(100% - 230px);padding:28px 36px 50px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px}
+    .active-chama{display:inline-flex;align-items:center;gap:10px;background:var(--weave);border:1px solid #ded5c4;border-radius:12px;padding:9px 12px}
+    .active-chama label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+    .active-chama select{border:0;background:transparent;color:var(--forest);font-weight:800;font-size:15px;outline:0;cursor:pointer;max-width:260px}
+    .profile{display:flex;align-items:center;gap:8px;color:var(--forest);font-weight:700;font-size:14px}
+    .avatar{width:34px;height:34px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center}
+    .welcome h1{font-size:26px;color:var(--forest);margin:0 0 5px}
+    .welcome p{margin:0;color:var(--muted);font-size:14px}
+    .payment{margin-top:24px;background:var(--weave);border:1px solid #ded5c4;border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .payment-copy{display:flex;align-items:center;gap:14px}
+    .payment-icon{width:40px;height:40px;border-radius:10px;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-weight:800}
+    .payment strong{display:block;color:var(--forest);font-size:15px}
+    .payment small{display:block;color:var(--muted);margin-top:3px}
+    .btn{border:0;border-radius:9px;padding:11px 15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn-primary{background:var(--forest);color:var(--paper)}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+    .card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:18px}
+    .card-label{font-size:12px;color:var(--muted);margin:0 0 9px}
+    .card h2{font-size:20px;color:var(--forest);margin:0}
+    .card-meta{font-size:12px;color:var(--muted);margin:7px 0 13px;line-height:1.5}
+    .card-link{font-size:13px;color:var(--forest);font-weight:700;text-decoration:none}
+    .progress{height:7px;background:#e7e1d5;border-radius:99px;overflow:hidden;margin:11px 0 7px}
+    .progress span{display:block;height:100%;background:var(--growth);border-radius:99px}
+    .lower{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin-top:16px}
+    .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .section-title h3{margin:0;color:var(--forest);font-size:16px}
+    .activity{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+    .activity:last-child{border-bottom:0}
+    .activity-name{font-size:13px;font-weight:700}
+    .activity-date{font-size:11px;color:var(--muted);margin-top:3px}
+    .amount{font-size:13px;font-weight:700;color:var(--forest)}
+    .quick{display:grid;gap:8px}
+    .quick a{padding:12px 13px;border:1px solid var(--line);border-radius:9px;text-decoration:none;font-size:13px;font-weight:700;background:var(--paper)}
+    .quick a:hover{border-color:var(--forest)}
+    .empty{font-size:13px;color:var(--muted);padding:12px 0}
+    .modal{display:none;position:fixed;inset:0;background:rgba(38,36,31,.42);align-items:center;justify-content:center;padding:18px;z-index:20}
+    .modal-box{background:var(--paper);width:100%;max-width:380px;border-radius:14px;padding:22px}
+    .modal-box h2{color:var(--forest);margin:0 0 16px}
+    .modal-box label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}
+    .modal-box input{width:100%;padding:10px;border:1px solid #d7d0c2;border-radius:8px;background:white}
+    @media(max-width:1000px){.cards{grid-template-columns:1fr 1fr}.lower{grid-template-columns:1fr}}
+    @media(max-width:760px){
+      .layout{display:block}.sidebar{position:static;width:100%;padding:12px}.brand{padding-bottom:12px}
+      .nav{display:flex;overflow-x:auto;gap:5px;padding-top:10px}.nav a{white-space:nowrap;margin:0}
+      .nav a.active{border-left:0;border-bottom:2px solid var(--gold);padding-left:12px}
+      main{margin:0;width:100%;padding:20px 16px 40px}
+      .topbar{align-items:flex-start}.active-chama select{max-width:170px}
+      .cards{grid-template-columns:1fr}.payment{align-items:flex-start;flex-direction:column}.payment-copy{align-items:flex-start}
+      .btn{width:100%;text-align:center}
+    }
+    @media(max-width:430px){.welcome h1{font-size:23px}.active-chama{width:100%}.topbar{display:block}.profile{margin-top:10px}}
   </style>
 </head>
 <body>
-  <div class="layout">
-    <nav class="sidebar">
-      <div class="brand">
-        <svg width="24" height="24" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
-          <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
-          <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
-          <circle cx="50" cy="42" r="4" fill="#e6c258"/>
-        </svg>
-        <span>Chama Salama</span>
-      </div>
-      <a href="/dashboard?chama_id={{.ActiveChamaID}}" class="active">Dashboard</a>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#e6c258" stroke-width="5"/>
+        <path d="M15 50 Q50 94 85 50 L79 69 Q50 85 21 69 Z" fill="#f4efe2"/>
+        <path d="M29 54 Q50 76 71 54" fill="none" stroke="#2f7a52" stroke-width="5"/>
+      </svg>
+      <span>Chama Salama</span>
+    </div>
+    <nav class="nav">
+      <a class="active" href="/dashboard?chama_id={{.ActiveChamaID}}">Dashboard</a>
       <a href="/chama/my-chamas">My Chamas</a>
-      <a href="/chama/create-page">+ Create Chama</a>
-      <a href="/chama/discover">Discover Chamas</a>
-      <a href="/chama/pending-requests">My Join Requests</a>
-      <a href="/contribute-page?chama_id={{.ActiveChamaID}}">Contribute</a>
-      <a href="/withdraw/request-page?chama_id={{.ActiveChamaID}}">Request Withdrawal</a>
-
+      <a href="/chama/discover">Discover Groups</a>
+      <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Rotation Schedule</a>
       {{if .IsAdminOrTreasurer}}
-      <div class="section-label">Admin only</div>
-      <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Manage Members</a>
-      <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Member Requests</a>
-      <a href="/withdraw/approve-page">Approve Withdrawal</a>
+      <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Admin Settings &amp; Approvals{{if .PendingAdminCount}} <strong>({{.PendingAdminCount}})</strong>{{end}}</a>
       {{end}}
     </nav>
+  </aside>
 
-    <main>
-      <div class="topbar">
-        <div id="avatarButton" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 8px; margin-left: auto;" onclick="toggleAvatarMenu()">
-          <div style="width: 32px; height: 32px; border-radius: 50%; background: #1f5c3d; color: #f4efe2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold;">
-            {{slice .FirstName 0 1}}
-          </div>
-          <span style="font-size: 14px; color: #1f5c3d; font-weight: bold;">{{.FirstName}}</span>
-        </div>
-      </div>
-      <div style="position: relative;">
-        <div id="avatarMenu" style="display: none; position: absolute; top: -10px; right: 0; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); min-width: 160px; overflow: hidden; z-index: 10;">
-          <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">My Profile</a>
-          <a href="/chama/invitations" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">Invitations</a>
-          <a href="/profile-page" style="display: block; padding: 10px 16px; font-size: 14px; color: #26241f; text-decoration: none;">Account Settings</a>
-          <a href="/logout" style="display: block; padding: 10px 16px; font-size: 14px; color: #c96f4a; text-decoration: none; border-top: 1px solid #eee;">Logout</a>
-        </div>
-      </div>
-
-      {{if gt (len .Chamas) 1}}
-      <form method="GET" action="/dashboard" style="margin-bottom: 10px;">
-        <label style="font-size: 13px; color: #555;">Active Chama:</label>
-        <select class="chama-select" name="chama_id" onchange="this.form.submit()">
-          {{range .Chamas}}
-          <option value="{{.ChamaID}}" {{if eq .ChamaID $.ActiveChamaID}}selected{{end}}>{{.ChamaName}}</option>
-          {{end}}
-        </select>
-      </form>
-      {{end}}
-
-   <h1>Welcome, {{.FirstName}}!</h1>
-      <p class="subtext">Track your savings and merry-go-round for {{.ActiveChamaName}}.</p>
-
-      <div class="section-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-        <div>
-          <p style="margin:0; font-size:13px; color:#555;">Cycle #{{.Cycle.CycleNumber}} · Due {{.Cycle.DueDate}}</p>
-          <p style="margin:4px 0 0; font-weight:bold;">
-            {{if .UserCycle.HasPaid}}<span class="status-synced">Paid</span>{{else}}<span class="status-pending">Pending KES {{.Cycle.TargetAmount}}</span>{{end}}
-          </p>
-        </div>
-        <button onclick="document.getElementById('stkModal').style.display='flex'" style="background:#1f5c3d; color:#fbf8f1; border:none; padding:10px 18px; border-radius:8px; font-weight:bold; cursor:pointer;">Pay Contribution via M-Pesa</button>
-      </div>
-
-      <div class="stats">
-        <div class="stat-card">
-          <p class="label">My Merry-Go-Round Turn</p>
-          <p class="value">Position #{{.UserCycle.QueuePosition}} of {{.UserCycle.TotalActive}}</p>
-          <p style="font-size:12px; color:#555; margin:4px 0;">Est. payout: {{.UserCycle.ExpectedPayoutDate}} · KES {{.UserCycle.ExpectedLumpSum}}</p>
-          <a href="/chama/roster?chama_id={{.ActiveChamaID}}" style="font-size:12px;">View Full Rotation</a>
-        </div>
-        <div class="stat-card">
-          <p class="label">Group Pool</p>
-          <p class="value">KES {{.Cycle.TotalCollected}} / {{.Cycle.TotalExpectedPool}}</p>
-          <p style="font-size:12px; color:#555; margin:4px 0;">Recipient: {{.Cycle.RecipientName}} · {{.Cycle.MembersPaidCount}}/{{.Cycle.TotalActive}} paid</p>
-          <div style="background:#e0dccf; border-radius:6px; height:6px; margin-top:6px;">
-            <div style="background:#2f7a52; height:6px; border-radius:6px; width:{{.Cycle.PercentPaid}}%;"></div>
-          </div>
-        </div>
-      </div>
-      <div class="section-card">
-        <h2>Merry-Go-Round Queue</h2>
-        <p>Next recipient: <strong>{{.RecipientName}}</strong></p>
-        <p>Your turn: Position #{{.QueuePosition}}</p>
-      </div>
-
-      <div class="section-card">
-        <h2>Recent contributions</h2>
-        {{if .Contributions}}
-        <table>
-          <tr><th>Member</th><th>Amount</th><th>Date</th><th>Status</th></tr>
-          {{range .Contributions}}
-          <tr>
-            <td>{{.MemberName}}</td>
-            <td>KES {{.Amount}}</td>
-            <td>{{.PaidOn}}</td>
-            <td class="status-{{.Status}}">{{.Status}}</td>
-          </tr>
-          {{end}}
-        </table>
+  <main>
+    <div class="topbar">
+      <div class="active-chama">
+        <label>Active Chama</label>
+        {{if gt (len .Chamas) 1}}
+        <form method="GET" action="/dashboard" style="margin:0">
+          <select name="chama_id" onchange="this.form.submit()" aria-label="Choose active Chama">
+            {{range .Chamas}}
+            <option value="{{.ChamaID}}" {{if eq .ChamaID $.ActiveChamaID}}selected{{end}}>{{.ChamaName}}</option>
+            {{end}}
+          </select>
+        </form>
         {{else}}
-        <p class="empty-state">No contributions yet. <a href="/contribute-page?chama_id={{.ActiveChamaID}}">Record the first one</a>.</p>
+        <strong style="color:var(--forest)">{{.ActiveChamaName}}</strong>
         {{end}}
       </div>
-      <div id="stkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100;">
-        <div style="background:#fbf8f1; border-radius:10px; padding:24px; width:320px;">
-          <h2 style="margin-top:0;">Pay Contribution</h2>
-          <form action="/stk-push" method="POST">
-            <input type="hidden" name="chama_id" value="{{.ActiveChamaID}}">
-            <label style="display:block; font-size:13px; color:#555; margin-top:10px;">Amount (KES)</label>
-            <input type="number" name="amount" value="{{.Cycle.TargetAmount}}" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" required>
-            <label style="display:block; font-size:13px; color:#555; margin-top:10px;">Phone Number</label>
-            <input type="text" name="phone" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" required>
-            <button type="submit" style="width:100%; margin-top:16px; padding:10px; background:#1f5c3d; color:#fbf8f1; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Pay via M-Pesa</button>
-          </form>
-          <button onclick="document.getElementById('stkModal').style.display='none'" style="width:100%; margin-top:8px; padding:10px; background:transparent; border:1px solid #ccc; border-radius:8px; cursor:pointer;">Cancel</button>
+      <div class="profile">
+        <div class="avatar">{{slice .FirstName 0 1}}</div>
+        <span>{{.FirstName}}</span>
+      </div>
+    </div>
+
+    <section class="welcome">
+      <h1>Welcome, {{.FirstName}}!</h1>
+      <p>Your {{.ActiveChamaName}} overview.</p>
+    </section>
+
+    <section class="payment">
+      <div class="payment-copy">
+        <div class="payment-icon">M</div>
+        <div>
+          {{if .UserCycle.HasPaid}}
+          <strong>Contribution paid for Round #{{.Cycle.CycleNumber}}</strong>
+          <small>You're up to date for this round.</small>
+          {{else}}
+          <strong>KES {{.Cycle.TargetAmount}} due for Round #{{.Cycle.CycleNumber}}</strong>
+          <small>Due {{.Cycle.DueDate}} · Your contribution is still pending.</small>
+          {{end}}
         </div>
       </div>
-    </main>
-  </div>
+      {{if not .UserCycle.HasPaid}}<button class="btn btn-primary" onclick="openPayment()">Pay via M-Pesa STK</button>{{end}}
+    </section>
 
-  <script>
-    function toggleAvatarMenu() {
-      const menu = document.getElementById('avatarMenu');
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    }
-    document.addEventListener('click', function(event) {
-      const button = document.getElementById('avatarButton');
-      const menu = document.getElementById('avatarMenu');
-      if (!button.contains(event.target)) menu.style.display = 'none';
-    });
-  </script>
+    <section class="cards">
+      <article class="card">
+        <p class="card-label">My Rotation</p>
+        <h2>Position #{{.UserCycle.QueuePosition}} of {{.UserCycle.TotalActive}}</h2>
+        <p class="card-meta">Estimated payout: {{.UserCycle.ExpectedPayoutDate}}<br>Expected payout: KES {{.UserCycle.ExpectedLumpSum}}</p>
+        <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}">View Full Rotation →</a>
+      </article>
+
+      <article class="card">
+        <p class="card-label">Current Round Pool</p>
+        <h2>KES {{.Cycle.TotalCollected}} / {{.Cycle.TotalExpectedPool}}</h2>
+        <div class="progress"><span style="width:{{.Cycle.PercentPaid}}%"></span></div>
+        <p class="card-meta">{{.Cycle.MembersPaidCount}} of {{.Cycle.TotalActive}} members paid · Round #{{.Cycle.CycleNumber}}</p>
+      </article>
+
+      <article class="card">
+        <p class="card-label">My Contribution History</p>
+        <h2>KES {{.Balance}}</h2>
+        <p class="card-meta">Your current recorded balance in this Chama.</p>
+        <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}">View Group History →</a>
+      </article>
+    </section>
+
+    <section class="lower">
+      <article class="card">
+        <div class="section-title">
+          <h3>Recent Contributions</h3>
+          <span style="font-size:11px;color:var(--muted)">Latest 3</span>
+        </div>
+        {{if .Contributions}}
+          {{range .Contributions}}
+          <div class="activity">
+            <div><div class="activity-name">{{.MemberName}}</div><div class="activity-date">{{.PaidOn}} · {{.Status}}</div></div>
+            <div class="amount">KES {{.Amount}}</div>
+          </div>
+          {{end}}
+          <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}" style="display:inline-block;margin-top:13px">View Full Group Ledger →</a>
+        {{else}}
+          <p class="empty">No contributions recorded yet.</p>
+        {{end}}
+      </article>
+
+      <article class="card">
+        <div class="section-title"><h3>Quick Actions</h3></div>
+        <div class="quick">
+          <a href="/withdraw/request-page?chama_id={{.ActiveChamaID}}">Request Withdrawal</a>
+          <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Group Rules &amp; Fines</a>
+          {{if .IsAdminOrTreasurer}}<a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Review Pending Members{{if .PendingAdminCount}} ({{.PendingAdminCount}}){{end}}</a>{{end}}
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="paymentModal">
+  <div class="modal-box">
+    <h2>Pay Contribution</h2>
+    <form action="/contribute" method="POST">
+      <input type="hidden" name="chama_id" value="{{.ActiveChamaID}}">
+      <label>Amount (KES)</label>
+      <input type="number" name="amount" value="{{.Cycle.TargetAmount}}" required>
+      <label>Phone Number</label>
+      <input type="text" name="phone" placeholder="07XXXXXXXX" required>
+      <button class="btn btn-primary" type="submit" style="width:100%;margin-top:16px">Continue Payment</button>
+    </form>
+    <button class="btn" type="button" onclick="closePayment()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--line)">Cancel</button>
+  </div>
+</div>
+
+<script>
+function openPayment(){document.getElementById('paymentModal').style.display='flex'}
+function closePayment(){document.getElementById('paymentModal').style.display='none'}
+</script>
 </body>
 </html>
