@@ -7,9 +7,9 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
-	"net/url"
 )
 
 func startServer(db *sql.DB) {
@@ -366,7 +366,9 @@ func startServer(db *sql.DB) {
 	})
 	http.HandleFunc("/admin/set-settings", func(w http.ResponseWriter, r *http.Request) {
 		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
-		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if chamaID == 0 {
+			chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		}
 		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
 			http.Error(w, "Admin access required", http.StatusForbidden)
 			return
@@ -396,7 +398,9 @@ func startServer(db *sql.DB) {
 
 	http.HandleFunc("/admin/settings", func(w http.ResponseWriter, r *http.Request) {
 		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
-		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if chamaID == 0 {
+			chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		}
 		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
 			http.Error(w, "Admin access required", http.StatusForbidden)
 			return
@@ -418,7 +422,9 @@ func startServer(db *sql.DB) {
 	})
 	http.HandleFunc("/admin/members", func(w http.ResponseWriter, r *http.Request) {
 		chamaID, _ := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
-		if chamaID == 0 { chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64) }
+		if chamaID == 0 {
+			chamaID, _ = strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		}
 		if _, err := requireChamaRole(db, r, chamaID, "admin"); err != nil {
 			http.Error(w, "Admin access required", http.StatusForbidden)
 			return
@@ -534,7 +540,7 @@ func startServer(db *sql.DB) {
 		tmpl.Execute(w, data)
 	})
 	http.HandleFunc("/withdraw/request-page", func(w http.ResponseWriter, r *http.Request) {
-		memberID, err := getLoggedInMemberID(r, db)
+		_, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
@@ -634,13 +640,17 @@ func startServer(db *sql.DB) {
 		}
 	})
 
-
-
 	http.HandleFunc("/notifications", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
-		if err != nil { http.Redirect(w, r, "/login-page", http.StatusSeeOther); return }
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
 		notifications, err := GetNotifications(db, memberID)
-		if err != nil { http.Error(w, "Failed to load notifications", http.StatusInternalServerError); return }
+		if err != nil {
+			http.Error(w, "Failed to load notifications", http.StatusInternalServerError)
+			return
+		}
 		tmpl := template.Must(template.ParseFiles("notifications.html"))
 		tmpl.Execute(w, struct{ Notifications []Notification }{notifications})
 	})
@@ -676,7 +686,9 @@ func startServer(db *sql.DB) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			next := "/chama/discover"
-			if id := r.FormValue("chama_id"); id != "" { next = "/chama/discover?chama_id=" + url.QueryEscape(id) }
+			if id := r.FormValue("chama_id"); id != "" {
+				next = "/chama/discover?chama_id=" + url.QueryEscape(id)
+			}
 			http.Redirect(w, r, "/login-page?next="+url.QueryEscape(next), http.StatusSeeOther)
 			return
 		}
@@ -733,9 +745,9 @@ func startServer(db *sql.DB) {
 		db.QueryRow("SELECT name FROM chamas WHERE id = ?", chamaID).Scan(&chamaName)
 		tmpl := template.Must(template.ParseFiles("chama-member-requests.html"))
 		tmpl.Execute(w, struct {
-			ChamaID int64
+			ChamaID   int64
 			ChamaName string
-			Requests []JoinRequest
+			Requests  []JoinRequest
 		}{chamaID, chamaName, requests})
 	})
 
