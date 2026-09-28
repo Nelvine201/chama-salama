@@ -51,8 +51,8 @@
       <a href="/chama/create-page">+ Create Chama</a>
       <a href="/chama/discover">Discover Chamas</a>
       <a href="/chama/pending-requests">My Join Requests</a>
-      <a href="/contribute-page">Contribute</a>
-      <a href="/withdraw/request-page">Request Withdrawal</a>
+      <a href="/contribute-page?chama_id={{.ActiveChamaID}}">Contribute</a>
+      <a href="/withdraw/request-page?chama_id={{.ActiveChamaID}}">Request Withdrawal</a>
 
       {{if .IsAdminOrTreasurer}}
       <div class="section-label">Admin only</div>
@@ -141,7 +141,7 @@
           {{end}}
         </table>
         {{else}}
-        <p class="empty-state">No contributions yet. <a href="/contribute-page">Record the first one</a>.</p>
+        <p class="empty-state">No contributions yet. <a href="/contribute-page?chama_id={{.ActiveChamaID}}">Record the first one</a>.</p>
         {{end}}
       </div>
       <div id="stkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100;">

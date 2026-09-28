@@ -13,14 +13,14 @@ type Withdrawal struct {
 	Status      string
 }
 
-func CreateWithdrawal(db *sql.DB, requestedBy int64, amount float64, reason string) (int64, error) {
+func CreateWithdrawal(db *sql.DB, requestedBy, chamaID int64, amount float64, reason string) (int64, error) {
 	if amount <= 0 {
 		return 0, fmt.Errorf("amount must be greater than zero")
 	}
 
 	result, err := db.Exec(
-		"INSERT INTO withdrawals (requested_by, amount, reason, status) VALUES (?, ?, ?, ?)",
-		requestedBy, amount, reason, "pending",
+		"INSERT INTO withdrawals (requested_by, chama_id, amount, reason, status) VALUES (?, ?, ?, ?, ?)",
+		requestedBy, chamaID, amount, reason, "pending",
 	)
 	if err != nil {
 		return 0, err
