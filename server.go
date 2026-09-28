@@ -177,16 +177,14 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		chamas, err := GetMemberChamas(db, memberID)
-		if err != nil || len(chamas) == 0 {
+		chamaID, err := strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		if err != nil || chamaID <= 0 {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
-		chamaID := chamas[0].ChamaID
-		if qid := r.URL.Query().Get("chama_id"); qid != "" {
-			if parsed, err := strconv.ParseInt(qid, 10, 64); err == nil {
-				chamaID = parsed
-			}
+		if _, err := requireChamaRole(db, r, chamaID, "member", "admin", "treasurer"); err != nil {
+			http.Error(w, "Active Chama membership required", http.StatusForbidden)
+			return
 		}
 
 		amount, _, _ := GetGroupSettingsForChama(db, chamaID)
@@ -536,13 +534,22 @@ func startServer(db *sql.DB) {
 		tmpl.Execute(w, data)
 	})
 	http.HandleFunc("/withdraw/request-page", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+		chamaID, err := strconv.ParseInt(r.URL.Query().Get("chama_id"), 10, 64)
+		if err != nil || chamaID <= 0 {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+			return
+		}
+		if _, err := requireChamaRole(db, r, chamaID, "member", "admin", "treasurer"); err != nil {
+			http.Error(w, "Active Chama membership required", http.StatusForbidden)
+			return
+		}
 		tmpl := template.Must(template.ParseFiles("withdraw-request.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ ChamaID int64 }{ChamaID: chamaID})
 	})
 
 	http.HandleFunc("/withdraw/request", func(w http.ResponseWriter, r *http.Request) {
@@ -557,6 +564,16 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if err != nil || chamaID <= 0 {
+			http.Error(w, "Invalid chama ID", http.StatusBadRequest)
+			return
+		}
+		if _, err := requireChamaRole(db, r, chamaID, "member", "admin", "treasurer"); err != nil {
+			http.Error(w, "Active Chama membership required", http.StatusForbidden)
+			return
+		}
+
 		amountStr := r.FormValue("amount")
 		amount, err := strconv.ParseFloat(amountStr, 64)
 		if err != nil {
@@ -566,7 +583,7 @@ func startServer(db *sql.DB) {
 
 		reason := r.FormValue("reason")
 
-		_, err = CreateWithdrawal(db, requestedBy, amount, reason)
+		_, err = CreateWithdrawal(db, requestedBy, chamaID, amount, reason)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to create withdrawal request:", err)
 			return
