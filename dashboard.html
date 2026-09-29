@@ -204,7 +204,7 @@
         <p class="card-label">My Rotation</p>
         <h2>Position #{{.UserCycle.QueuePosition}} of {{.UserCycle.TotalActive}}</h2>
         <p class="card-meta">Estimated payout: {{.UserCycle.ExpectedPayoutDate}}<br>Expected payout: KES {{.UserCycle.ExpectedLumpSum}}</p>
-        <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}">View Full Rotation →</a>
+        <a class="card-link" href="/rotation?chama_id={{.ActiveChamaID}}">View Full Rotation →</a>
       </article>
 
       <article class="card">
@@ -218,7 +218,7 @@
         <p class="card-label">My Contribution History</p>
         <h2>KES {{.Balance}}</h2>
         <p class="card-meta">Your current recorded balance in this Chama.</p>
-        <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}">View Group History →</a>
+        <a class="card-link" href="/history?chama_id={{.ActiveChamaID}}">View Group History →</a>
       </article>
     </section>
 
@@ -235,7 +235,7 @@
             <div class="amount">KES {{.Amount}}</div>
           </div>
           {{end}}
-          <a class="card-link" href="/chama/roster?chama_id={{.ActiveChamaID}}" style="display:inline-block;margin-top:13px">View Full Group Ledger →</a>
+          <a class="card-link" href="/ledger?chama_id={{.ActiveChamaID}}" style="display:inline-block;margin-top:13px">View Full Group Ledger →</a>
         {{else}}
           <p class="empty">No contributions recorded yet.</p>
         {{end}}
@@ -245,7 +245,7 @@
         <div class="section-title"><h3>Quick Actions</h3></div>
         <div class="quick">
           <a href="/withdraw/request-page?chama_id={{.ActiveChamaID}}">Request Withdrawal</a>
-          <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Group Rules &amp; Fines</a>
+          <a href="/rules?chama_id={{.ActiveChamaID}}">Group Rules &amp; Fines</a>
           {{if .IsAdminOrTreasurer}}<a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Review Pending Members</a>{{end}}
         </div>
       </article>
