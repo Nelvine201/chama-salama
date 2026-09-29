@@ -141,7 +141,11 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 			SELECT 'Join request reviewed', m.name, 'Membership request was ' || jr.status, jr.reviewed_at
 			FROM chama_join_requests jr JOIN members m ON m.id=jr.member_id
 			WHERE jr.chama_id=? AND jr.reviewed_at IS NOT NULL
-			ORDER BY 4 DESC`, chamaID, chamaID, chamaID)
+			UNION ALL
+			SELECT ae.event, COALESCE(m.name, 'System'), ae.details, ae.created_at
+			FROM audit_events ae LEFT JOIN members m ON m.id=ae.member_id
+			WHERE ae.chama_id=?
+			ORDER BY 4 DESC`, chamaID, chamaID, chamaID, chamaID)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
