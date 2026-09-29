@@ -49,6 +49,7 @@
     .profile-dropdown{position:absolute;right:0;top:calc(100% + 8px);width:170px;background:var(--white);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 10px 25px rgba(38,36,31,.12);z-index:10}
     .profile-dropdown a{display:block;padding:10px 11px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:13px}
     .profile-dropdown a:hover{background:var(--weave);color:var(--forest)}
+    .profile-divider{height:1px;background:var(--line);margin:4px 6px}
 
     .avatar{width:34px;height:34px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center}
     .welcome h1{font-size:26px;color:var(--forest);margin:0 0 5px}
@@ -168,8 +169,10 @@
             <span class="chevron">⌄</span>
           </summary>
           <div class="profile-dropdown">
-            <a href="/profile-page">Profile Settings</a>
-            <a href="/logout">Log out</a>
+            <a href="/profile/edit">Edit Profile</a>
+            <a href="/settings">Settings</a>
+            <div class="profile-divider"></div>
+            <a href="/logout">Logout</a>
           </div>
         </details>
       </div>
