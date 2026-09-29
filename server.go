@@ -494,6 +494,7 @@ func startServer(db *sql.DB) {
 		cycleSummary, _ := GetCycleSummary(db, activeChamaID)
 		userSummary, _ := GetUserCycleSummary(db, activeChamaID, memberID)
 		pendingRequests, _ := GetMyJoinRequests(db, memberID)
+		notifications, _ := GetNotifications(db, memberID)
 
 		var unreadNotifications int
 		db.QueryRow("SELECT COUNT(*) FROM notifications WHERE member_id = ? AND read_at IS NULL", memberID).Scan(&unreadNotifications)
@@ -522,6 +523,7 @@ func startServer(db *sql.DB) {
 			UserCycle          *UserCycleSummary
 			PendingRequests    []JoinRequest
 			UnreadNotifications int
+			Notifications []Notification
 		}{
 			FirstName:          firstName,
 			ActiveChamaID:      activeChamaID,
@@ -540,6 +542,7 @@ func startServer(db *sql.DB) {
 			UserCycle:          userSummary,
 			PendingRequests:    pendingRequests,
 			UnreadNotifications: unreadNotifications,
+			Notifications: notifications,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
