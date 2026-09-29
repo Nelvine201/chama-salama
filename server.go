@@ -643,6 +643,12 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		var chamaIDForApproval int64
+		err = db.QueryRow("SELECT chama_id FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&chamaIDForApproval)
+		if err != nil { http.Error(w, "Withdrawal request not found", http.StatusNotFound); return }
+		role, err := GetMemberRoleInChama(db, chamaIDForApproval, memberID)
+		if err != nil || (role != "admin" && role != "treasurer") { http.Error(w, "Admin or treasurer approval required", http.StatusForbidden); return }
+
 		fullyApproved, err := ApproveWithdrawal(db, withdrawalID, memberID)
 		if err != nil {
 			fmt.Fprintln(w, "Approval failed:", err)
@@ -661,13 +667,7 @@ func startServer(db *sql.DB) {
 		_ = chamaID
 		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
-
-	http.HandleFunc("/withdraw/reject", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost { http.Error(w, "Method not allowed", http.StatusMethodNotAllowed); return }
-		memberID, err := getLoggedInMemberID(r, db)
-		if err != nil { http.Redirect(w, r, "/login-page", http.StatusSeeOther); return }
-		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
-		if err != nil { http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest); return }
+uest); return }
 		var requestedBy, chamaID int64
 		var amount float64
 		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
