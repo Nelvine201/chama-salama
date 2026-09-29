@@ -122,6 +122,14 @@ func main() {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`)
 	_, _ = db.Exec("ALTER TABLE notifications ADD COLUMN reference_id INTEGER")
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS audit_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		chama_id INTEGER NOT NULL,
+		member_id INTEGER,
+		event TEXT NOT NULL,
+		details TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`)
 
 
 	var chamaCount int
