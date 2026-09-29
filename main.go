@@ -117,9 +117,11 @@ func main() {
 		title TEXT NOT NULL,
 		message TEXT NOT NULL,
 		type TEXT NOT NULL DEFAULT 'system',
+		reference_id INTEGER,
 		read_at DATETIME,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`)
+	_, _ = db.Exec("ALTER TABLE notifications ADD COLUMN reference_id INTEGER")
 
 
 	var chamaCount int
