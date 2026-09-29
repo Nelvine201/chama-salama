@@ -607,7 +607,7 @@ func startServer(db *sql.DB) {
 		var requesterName string
 		db.QueryRow("SELECT name FROM members WHERE id = ?", requestedBy).Scan(&requesterName)
 		CreateNotification(db, requestedBy, "Withdrawal request submitted", fmt.Sprintf("Withdrawal request of KES %.2f submitted, pending approval.", amount), "withdrawal_submitted")
-		CreateChamaNotification(db, chamaID, requestedBy, "New Withdrawal Request", fmt.Sprintf("New Withdrawal Request from %s for KES %.2f", requesterName, amount), "withdrawal_request")
+		CreateChamaNotificationWithReference(db, chamaID, requestedBy, "New Withdrawal Request", fmt.Sprintf("New Withdrawal Request from %s for KES %.2f", requesterName, amount), "withdrawal_request", withdrawalID)
 
 		_ = withdrawalID
 		http.Redirect(w, r, "/dashboard?chama_id="+strconv.FormatInt(chamaID, 10), http.StatusSeeOther)
