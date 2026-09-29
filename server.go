@@ -639,18 +639,23 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		withdrawalIDStr := r.FormValue("withdrawal_id")
-		withdrawalID, err := strconv.ParseInt(withdrawalIDStr, 10, 64)
+		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
 		if err != nil {
-			fmt.Fprintln(w, "Invalid withdrawal ID")
+			http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest)
 			return
 		}
 
-		var chamaIDForApproval int64
-		err = db.QueryRow("SELECT chama_id FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&chamaIDForApproval)
-		if err != nil { http.Error(w, "Withdrawal request not found", http.StatusNotFound); return }
-		role, err := GetMemberRoleInChama(db, chamaIDForApproval, memberID)
-		if err != nil || (role != "admin" && role != "treasurer") { http.Error(w, "Admin or treasurer approval required", http.StatusForbidden); return }
+		var chamaID int64
+		err = db.QueryRow("SELECT chama_id FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&chamaID)
+		if err != nil {
+			http.Error(w, "Withdrawal request not found", http.StatusNotFound)
+			return
+		}
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil || (role != "admin" && role != "treasurer") {
+			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
+			return
+		}
 
 		fullyApproved, err := ApproveWithdrawal(db, withdrawalID, memberID)
 		if err != nil {
@@ -660,25 +665,47 @@ func startServer(db *sql.DB) {
 
 		var requestedBy int64
 		var amount float64
-		var chamaID int64
-		db.QueryRow("SELECT requested_by, amount, chama_id FROM withdrawals WHERE id = ?", withdrawalID).Scan(&requestedBy, &amount, &chamaID)
+		db.QueryRow("SELECT requested_by, amount FROM withdrawals WHERE id = ?", withdrawalID).Scan(&requestedBy, &amount)
 		if fullyApproved {
 			CreateNotification(db, requestedBy, "Withdrawal approved", fmt.Sprintf("Your withdrawal request of KES %.2f has been approved.", amount), "withdrawal_approved")
 		} else {
 			CreateNotification(db, requestedBy, "Withdrawal approval recorded", fmt.Sprintf("An approval was recorded for your KES %.2f withdrawal request. More approvals may be required.", amount), "withdrawal_approval")
 		}
-		_ = chamaID
 		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
-uest); return }
+
+	http.HandleFunc("/withdraw/reject", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest)
+			return
+		}
 		var requestedBy, chamaID int64
 		var amount float64
 		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
-		if err != nil { http.Error(w, "Withdrawal request not found", http.StatusNotFound); return }
+		if err != nil {
+			http.Error(w, "Withdrawal request not found", http.StatusNotFound)
+			return
+		}
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
-		if err != nil || (role != "admin" && role != "treasurer") { http.Error(w, "Admin or treasurer approval required", http.StatusForbidden); return }
+		if err != nil || (role != "admin" && role != "treasurer") {
+			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
+			return
+		}
 		_, err = db.Exec("UPDATE withdrawals SET status = 'rejected' WHERE id = ?", withdrawalID)
-		if err != nil { http.Error(w, "Failed to reject withdrawal", http.StatusInternalServerError); return }
+		if err != nil {
+			http.Error(w, "Failed to reject withdrawal", http.StatusInternalServerError)
+			return
+		}
 		CreateNotification(db, requestedBy, "Withdrawal rejected", fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount), "withdrawal_rejected")
 		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
