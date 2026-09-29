@@ -27,9 +27,21 @@
     .active-chama label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
     .active-chama select{border:0;background:transparent;color:var(--forest);font-weight:800;font-size:15px;outline:0;cursor:pointer;max-width:260px}
     .top-actions{display:flex;align-items:center;gap:12px}
-    .notification-link{position:relative;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--white);display:grid;place-items:center;text-decoration:none;color:var(--forest)}
+    .notification-menu{position:relative}
+    .notification-menu summary{list-style:none}
+    .notification-menu summary::-webkit-details-marker{display:none}
+    .notification-link{position:relative;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--white);display:grid;place-items:center;text-decoration:none;color:var(--forest);cursor:pointer}
+    .notification-drawer{position:absolute;right:0;top:calc(100% + 8px);width:330px;max-height:430px;overflow:auto;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 28px rgba(38,36,31,.14);z-index:12}
+    .notification-head{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border-bottom:1px solid var(--line);color:var(--forest)}
+    .notification-head a{font-size:11px;color:var(--growth);text-decoration:none}
+    .notification-item{padding:13px 14px;border-bottom:1px solid var(--line)}
+    .notification-item strong{font-size:13px;color:var(--forest)}
+    .notification-item p{font-size:12px;line-height:1.45;margin:4px 0;color:var(--ink)}
+    .notification-item small{font-size:10px;color:var(--muted)}
+    .notification-actions a{display:inline-block;margin-top:8px;border-radius:7px;background:var(--forest);padding:6px 9px;color:var(--paper);font-size:11px;font-weight:700;text-decoration:none}
+    .notification-empty{padding:22px 14px;text-align:center;color:var(--muted);font-size:12px}
     .bell{font-size:21px;line-height:1;transform:rotate(45deg);display:block}
-    .notification-dot{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--clay);border:2px solid var(--white)}
+    .notification-dot{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--clay);border:2px solid var(--white);color:white;font-size:9px;display:grid;place-items:center;font-weight:800}
     .profile-menu{position:relative}
     .profile{display:flex;align-items:center;gap:8px;color:var(--forest);font-weight:700;font-size:14px;cursor:pointer;list-style:none}
     .profile::-webkit-details-marker{display:none}
@@ -83,7 +95,7 @@
       .cards{grid-template-columns:1fr}.payment{align-items:flex-start;flex-direction:column}.payment-copy{align-items:flex-start}
       .btn{width:100%;text-align:center}
     }
-    @media(max-width:430px){.welcome h1{font-size:23px}.active-chama{width:100%}.topbar{display:block}.profile{margin-top:10px}}
+    @media(max-width:430px){.welcome h1{font-size:23px}.active-chama{width:100%}.topbar{display:block}.top-actions{justify-content:flex-end;margin-top:10px}.notification-drawer{position:fixed;right:12px;left:12px;top:72px;width:auto}.profile{margin-top:0}}
   </style>
 </head>
 <body>
@@ -101,7 +113,10 @@
       <a class="active" href="/dashboard?chama_id={{.ActiveChamaID}}">Dashboard</a>
       <a href="/chama/my-chamas">My Chamas</a>
       <a href="/chama/discover">Discover Groups</a>
-      <a href="/chama/roster?chama_id={{.ActiveChamaID}}">Rotation Schedule</a>
+      <a href="/rotation?chama_id={{.ActiveChamaID}}">Rotation Schedule</a>
+      <a href="/history?chama_id={{.ActiveChamaID}}">Group History</a>
+      <a href="/ledger?chama_id={{.ActiveChamaID}}">Master Ledger</a>
+      <a href="/rules?chama_id={{.ActiveChamaID}}">Group Rules &amp; Fines</a>
       {{if .IsAdminOrTreasurer}}
       <a href="/chama/member-requests?chama_id={{.ActiveChamaID}}">Admin Settings &amp; Approvals</a>
       {{end}}
@@ -125,10 +140,27 @@
         {{end}}
       </div>
       <div class="top-actions">
-        <a class="notification-link" href="/notifications" aria-label="Notifications" title="Notifications">
-          <span class="bell">♢</span>
-          {{if gt .UnreadNotifications 0}}<span class="notification-dot"></span>{{end}}
-        </a>
+        <details class="notification-menu">
+          <summary class="notification-link" aria-label="Open notifications" title="Notifications">
+            <span class="bell">♢</span>
+            {{if gt .UnreadNotifications 0}}<span class="notification-dot">{{.UnreadNotifications}}</span>{{end}}
+          </summary>
+          <div class="notification-drawer">
+            <div class="notification-head"><strong>Notifications</strong><a href="/notifications">View all</a></div>
+            {{range .Notifications}}
+              <article class="notification-item">
+                <strong>{{.Title}}</strong>
+                <p>{{.Message}}</p>
+                <small>{{.CreatedAt}}</small>
+                {{if eq .Type "withdrawal_request"}}
+                  <div class="notification-actions"><a href="/withdraw/approve-page?withdrawal_id={{.ID}}">Review</a></div>
+                {{end}}
+              </article>
+            {{else}}
+              <p class="notification-empty">You're all caught up.</p>
+            {{end}}
+          </div>
+        </details>
         <details class="profile-menu">
           <summary class="profile" aria-label="Open account menu">
             <div class="avatar">{{slice .FirstName 0 1}}</div>
