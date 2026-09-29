@@ -138,3 +138,14 @@ ON chama_members (chama_id, member_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_join_request_unique
 ON chama_join_requests (chama_id, member_id)
 WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chama_id INTEGER NOT NULL,
+    member_id INTEGER,
+    event TEXT NOT NULL,
+    details TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chama_id) REFERENCES chamas(id),
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);
