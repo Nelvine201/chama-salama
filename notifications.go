@@ -7,19 +7,20 @@ type Notification struct {
     Title     string
     Message   string
     Type      string
+    ReferenceID sql.NullInt64
     ReadAt    sql.NullString
     CreatedAt string
 }
 
 func GetNotifications(db *sql.DB, memberID int64) ([]Notification, error) {
-    rows, err := db.Query(`SELECT id, title, message, type, read_at, created_at
+    rows, err := db.Query(`SELECT id, title, message, type, reference_id, read_at, created_at
         FROM notifications WHERE member_id = ? ORDER BY id DESC`, memberID)
     if err != nil { return nil, err }
     defer rows.Close()
     var result []Notification
     for rows.Next() {
         var n Notification
-        if err := rows.Scan(&n.ID, &n.Title, &n.Message, &n.Type, &n.ReadAt, &n.CreatedAt); err != nil {
+        if err := rows.Scan(&n.ID, &n.Title, &n.Message, &n.Type, &n.ReferenceID, &n.ReadAt, &n.CreatedAt); err != nil {
             return nil, err
         }
         result = append(result, n)
@@ -42,4 +43,9 @@ func CreateChamaNotification(db *sql.DB, chamaID int64, excludeMemberID int64, t
 		if err := CreateNotification(db, memberID, title, message, notificationType); err != nil { return err }
 	}
 	return rows.Err()
+}
+
+func CreateNotificationWithReference(db *sql.DB, memberID int64, title, message, notificationType string, referenceID int64) error {
+	_, err := db.Exec("INSERT INTO notifications (member_id, title, message, type, reference_id) VALUES (?, ?, ?, ?, ?)", memberID, title, message, notificationType, referenceID)
+	return err
 }
