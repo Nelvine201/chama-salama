@@ -63,7 +63,16 @@ func ApproveWithdrawal(db *sql.DB, withdrawalID, memberID int64) (bool, error) {
 		return false, err
 	}
 
-	if approvalCount >= 3 {
+	var threshold int
+	err = db.QueryRow(
+		"SELECT COALESCE(gs.approval_threshold, 1) FROM withdrawals w LEFT JOIN group_settings gs ON gs.chama_id = w.chama_id WHERE w.id = ?",
+		withdrawalID,
+	).Scan(&threshold)
+	if err != nil {
+		return false, err
+	}
+
+	if approvalCount >= threshold {
 		_, err = db.Exec("UPDATE withdrawals SET status = 'approved' WHERE id = ?", withdrawalID)
 		if err != nil {
 			return false, err
