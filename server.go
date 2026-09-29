@@ -13,6 +13,7 @@ import (
 )
 
 func startServer(db *sql.DB) {
+	registerDashboardSubpageRoutes(db)
 	http.Handle("/", http.FileServer(http.Dir("docs")))
 	registerAuthRoutes(db)
 
