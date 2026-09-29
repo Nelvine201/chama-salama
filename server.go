@@ -394,6 +394,9 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		if memberID, err := getLoggedInMemberID(r, db); err == nil {
+			RecordAuditEvent(db, chamaID, memberID, "Rule change", fmt.Sprintf("Contribution set to KES %.2f with %s schedule.", amount, frequency))
+		}
 		fmt.Fprintln(w, "Group settings updated successfully")
 	})
 
