@@ -598,13 +598,19 @@ func startServer(db *sql.DB) {
 
 		reason := r.FormValue("reason")
 
-		_, err = CreateWithdrawal(db, requestedBy, chamaID, amount, reason)
+		withdrawalID, err := CreateWithdrawal(db, requestedBy, chamaID, amount, reason)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to create withdrawal request:", err)
 			return
 		}
 
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		var requesterName string
+		db.QueryRow("SELECT name FROM members WHERE id = ?", requestedBy).Scan(&requesterName)
+		CreateNotification(db, requestedBy, "Withdrawal request submitted", fmt.Sprintf("Withdrawal request of KES %.2f submitted, pending approval.", amount), "withdrawal_submitted")
+		CreateChamaNotification(db, chamaID, requestedBy, "New Withdrawal Request", fmt.Sprintf("New Withdrawal Request from %s for KES %.2f", requesterName, amount), "withdrawal_request")
+
+		_ = withdrawalID
+		http.Redirect(w, r, "/dashboard?chama_id="+strconv.FormatInt(chamaID, 10), http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/withdraw/approve-page", func(w http.ResponseWriter, r *http.Request) {
@@ -613,8 +619,9 @@ func startServer(db *sql.DB) {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+		withdrawalID, _ := strconv.ParseInt(r.URL.Query().Get("withdrawal_id"), 10, 64)
 		tmpl := template.Must(template.ParseFiles("withdraw-approve.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct{ WithdrawalID int64 }{WithdrawalID: withdrawalID})
 	})
 
 	http.HandleFunc("/withdraw/approve", func(w http.ResponseWriter, r *http.Request) {
@@ -642,11 +649,35 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		var requestedBy int64
+		var amount float64
+		var chamaID int64
+		db.QueryRow("SELECT requested_by, amount, chama_id FROM withdrawals WHERE id = ?", withdrawalID).Scan(&requestedBy, &amount, &chamaID)
 		if fullyApproved {
-			fmt.Fprintln(w, "Approval recorded. Withdrawal is now fully approved!")
+			CreateNotification(db, requestedBy, "Withdrawal approved", fmt.Sprintf("Your withdrawal request of KES %.2f has been approved.", amount), "withdrawal_approved")
 		} else {
-			fmt.Fprintln(w, "Approval recorded. Waiting for more signatures.")
+			CreateNotification(db, requestedBy, "Withdrawal approval recorded", fmt.Sprintf("An approval was recorded for your KES %.2f withdrawal request. More approvals may be required.", amount), "withdrawal_approval")
 		}
+		_ = chamaID
+		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
+	})
+
+	http.HandleFunc("/withdraw/reject", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost { http.Error(w, "Method not allowed", http.StatusMethodNotAllowed); return }
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil { http.Redirect(w, r, "/login-page", http.StatusSeeOther); return }
+		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
+		if err != nil { http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest); return }
+		var requestedBy, chamaID int64
+		var amount float64
+		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
+		if err != nil { http.Error(w, "Withdrawal request not found", http.StatusNotFound); return }
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil || (role != "admin" && role != "treasurer") { http.Error(w, "Admin or treasurer approval required", http.StatusForbidden); return }
+		_, err = db.Exec("UPDATE withdrawals SET status = 'rejected' WHERE id = ?", withdrawalID)
+		if err != nil { http.Error(w, "Failed to reject withdrawal", http.StatusInternalServerError); return }
+		CreateNotification(db, requestedBy, "Withdrawal rejected", fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount), "withdrawal_rejected")
+		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/notifications", func(w http.ResponseWriter, r *http.Request) {
