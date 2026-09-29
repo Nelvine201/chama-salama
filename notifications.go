@@ -49,3 +49,15 @@ func CreateNotificationWithReference(db *sql.DB, memberID int64, title, message,
 	_, err := db.Exec("INSERT INTO notifications (member_id, title, message, type, reference_id) VALUES (?, ?, ?, ?, ?)", memberID, title, message, notificationType, referenceID)
 	return err
 }
+
+func CreateChamaNotificationWithReference(db *sql.DB, chamaID, excludeMemberID int64, title, message, notificationType string, referenceID int64) error {
+	rows, err := db.Query("SELECT member_id FROM chama_members WHERE chama_id = ? AND status = 'active' AND member_id != ?", chamaID, excludeMemberID)
+	if err != nil { return err }
+	defer rows.Close()
+	for rows.Next() {
+		var memberID int64
+		if err := rows.Scan(&memberID); err != nil { return err }
+		if err := CreateNotificationWithReference(db, memberID, title, message, notificationType, referenceID); err != nil { return err }
+	}
+	return rows.Err()
+}
