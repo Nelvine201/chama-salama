@@ -509,43 +509,43 @@ func startServer(db *sql.DB) {
 		isAdminOrTreasurer := activeRole == "admin" || activeRole == "treasurer"
 
 		data := struct {
-			FirstName          string
-			ActiveChamaID      int64
-			ActiveChamaName    string
-			ActiveRole         string
-			Chamas             []ChamaMembership
-			Balance            float64
-			Amount             float64
-			Frequency          string
-			Contributions      []ContributionWithMember
-			RecipientName      string
-			QueuePosition      int
-			PersonalPaid       bool
-			IsAdminOrTreasurer bool
-			Cycle              *CycleSummary
-			UserCycle          *UserCycleSummary
-			PendingRequests    []JoinRequest
+			FirstName           string
+			ActiveChamaID       int64
+			ActiveChamaName     string
+			ActiveRole          string
+			Chamas              []ChamaMembership
+			Balance             float64
+			Amount              float64
+			Frequency           string
+			Contributions       []ContributionWithMember
+			RecipientName       string
+			QueuePosition       int
+			PersonalPaid        bool
+			IsAdminOrTreasurer  bool
+			Cycle               *CycleSummary
+			UserCycle           *UserCycleSummary
+			PendingRequests     []JoinRequest
 			UnreadNotifications int
-			Notifications []Notification
+			Notifications       []Notification
 		}{
-			FirstName:          firstName,
-			ActiveChamaID:      activeChamaID,
-			ActiveChamaName:    activeChamaName,
-			ActiveRole:         activeRole,
-			Chamas:             chamas,
-			Balance:            balance,
-			Amount:             amount,
-			Frequency:          frequency,
-			Contributions:      contributions,
-			RecipientName:      recipientName,
-			QueuePosition:      queuePos,
-			PersonalPaid:       personalPaid,
-			IsAdminOrTreasurer: isAdminOrTreasurer,
-			Cycle:              cycleSummary,
-			UserCycle:          userSummary,
-			PendingRequests:    pendingRequests,
+			FirstName:           firstName,
+			ActiveChamaID:       activeChamaID,
+			ActiveChamaName:     activeChamaName,
+			ActiveRole:          activeRole,
+			Chamas:              chamas,
+			Balance:             balance,
+			Amount:              amount,
+			Frequency:           frequency,
+			Contributions:       contributions,
+			RecipientName:       recipientName,
+			QueuePosition:       queuePos,
+			PersonalPaid:        personalPaid,
+			IsAdminOrTreasurer:  isAdminOrTreasurer,
+			Cycle:               cycleSummary,
+			UserCycle:           userSummary,
+			PendingRequests:     pendingRequests,
 			UnreadNotifications: unreadNotifications,
-			Notifications: notifications,
+			Notifications:       notifications,
 		}
 
 		tmpl := template.Must(template.ParseFiles("dashboard.html"))
