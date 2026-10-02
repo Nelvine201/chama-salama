@@ -94,7 +94,8 @@
   <main>
     <div class="card">
       <h2>Sign in</h2>
-      <form action="/auth/login" method="POST"><input type="hidden" name="next" value="{{.Next}}">
+      <form action="/auth/login" method="POST">
+        <input type="hidden" name="next" value="{{.Next}}">
         <label>Phone or email</label>
         <input type="text" name="identifier" required>
 
@@ -106,7 +107,10 @@
       {{if .Message}}
       <p class="message">{{.Message}}</p>
       {{end}}
-      <p style="margin-top: 16px; font-size: 13px;">Don't have an account? <a href="/register-page">Create one</a></p>
+      <p style="margin-top: 16px; font-size: 13px;">
+        Don't have an account?
+        <a href="/register-page?next={{.Next}}">Create one</a>
+      </p>
     </div>
   </main>
 </body>
