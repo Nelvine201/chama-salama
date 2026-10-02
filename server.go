@@ -43,8 +43,18 @@ func startServer(db *sql.DB) {
 		http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 	})
 	http.HandleFunc("/login-page", func(w http.ResponseWriter, r *http.Request) {
+		next := safeNextPath(r.URL.Query().Get("next"))
+
+		if _, err := getLoggedInMemberID(r, db); err == nil {
+			if next == "" {
+				next = "/dashboard"
+			}
+			http.Redirect(w, r, next, http.StatusSeeOther)
+			return
+		}
+
 		tmpl := template.Must(template.ParseFiles("login.html"))
-		tmpl.Execute(w, struct{ Next string }{Next: safeNextPath(r.URL.Query().Get("next"))})
+		tmpl.Execute(w, struct{ Next string }{Next: next})
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
