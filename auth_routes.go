@@ -49,6 +49,10 @@ func registerAuthRoutes(db *sql.DB) {
 		password := r.FormValue("password")
 
 		member, err := CheckLogin(db, identifier, password)
+		if err != nil {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
 
 		token, err := createSession(db, member.ID)
 		if err != nil {
@@ -85,30 +89,25 @@ func registerAuthRoutes(db *sql.DB) {
 
 		name := strings.TrimSpace(r.FormValue("name"))
 		phone := strings.TrimSpace(r.FormValue("phone"))
+		email := strings.TrimSpace(r.FormValue("email"))
 		password := r.FormValue("password")
-		if name == "" || phone == "" || password == "" {
-			http.Error(w, "Full name, phone number and password are required", http.StatusBadRequest)
+		if name == "" || password == "" {
+			http.Error(w, "Full name and password are required", http.StatusBadRequest)
 			return
 		}
 
-		memberID, err := CreateMember(db, name, phone, "", password, "member", true)
+		_, err := CreateMember(db, name, phone, email, password, "member", true)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		token, err := createSession(db, memberID)
-		if err != nil {
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
-		}
-		setSessionCookie(w, r, token)
-
 		next := safeNextPath(r.FormValue("next"))
-		if next == "" {
-			next = "/dashboard"
+		target := "/login-page"
+		if next != "" {
+			target += "?next=" + url.QueryEscape(next)
 		}
-		http.Redirect(w, r, next, http.StatusSeeOther)
+		http.Redirect(w, r, target, http.StatusSeeOther)
 	})
 }
 
