@@ -107,10 +107,16 @@
       {{if .Message}}
       <p class="message">{{.Message}}</p>
       {{end}}
+      {{if .Authenticated}}
+      <p style="margin-top: 16px; font-size: 13px;">
+        Already signed in? <a href="/logout">Log out</a> first to sign in with another account.
+      </p>
+      {{else}}
       <p style="margin-top: 16px; font-size: 13px;">
         Don't have an account?
         <a href="/register-page?next={{.Next}}">Create one</a>
       </p>
+      {{end}}
     </div>
   </main>
 </body>
