@@ -469,8 +469,25 @@ func startServer(db *sql.DB) {
 			return
 		}
 		if len(chamas) == 0 {
+			requests, _ := GetMyJoinRequests(db, memberID)
+
+			var unreadNotifications int
+			db.QueryRow("SELECT COUNT(*) FROM notifications WHERE member_id = ? AND read_at IS NULL", memberID).Scan(&unreadNotifications)
+
+			profileComplete := profile.NationalID.Valid && profile.NationalID.String != ""
+
 			tmpl := template.Must(template.ParseFiles("dashboard-empty.html"))
-			tmpl.Execute(w, struct{ FirstName string }{FirstName: firstName})
+			tmpl.Execute(w, struct {
+				FirstName           string
+				ProfileComplete     bool
+				Requests            []JoinRequest
+				UnreadNotifications int
+			}{
+				FirstName:           firstName,
+				ProfileComplete:     profileComplete,
+				Requests:            requests,
+				UnreadNotifications: unreadNotifications,
+			})
 			return
 		}
 
