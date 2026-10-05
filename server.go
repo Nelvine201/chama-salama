@@ -10,9 +10,25 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"chama-salama/internal/multisig"
 )
 
+type PendingWithdrawalApproval struct {
+	ID int64
+	ChamaID int64
+	ChamaName string
+	RequesterName string
+	Amount float64
+	Reason string
+	CreatedAt string
+	AdminApproved bool
+	TreasurerApproved bool
+	CurrentMemberSigned bool
+}
+
 func startServer(db *sql.DB) {
+	multisigService := multisig.NewService(db)
 	registerDashboardSubpageRoutes(db)
 	http.Handle("/", http.FileServer(http.Dir("docs")))
 	registerAuthRoutes(db)
@@ -640,19 +656,64 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/withdraw/approve-page", func(w http.ResponseWriter, r *http.Request) {
-		_, err := getLoggedInMemberID(r, db)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
-		withdrawalID, _ := strconv.ParseInt(r.URL.Query().Get("withdrawal_id"), 10, 64)
+
+		var role string
+		err = db.QueryRow(
+			"SELECT role FROM chama_members WHERE member_id = ? AND status = 'active' AND role IN ('admin', 'treasurer') ORDER BY CASE role WHEN 'admin' THEN 0 ELSE 1 END LIMIT 1",
+			memberID,
+		).Scan(&role)
+		if err != nil {
+			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
+			return
+		}
+
+		rows, err := db.Query(
+			"SELECT w.id, w.chama_id, c.name, m.name, w.amount, COALESCE(w.reason, ''), COALESCE(w.created_at, ''), " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_role = 'ADMIN' AND wa.status = 'SIGNED'), " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_role = 'TREASURER' AND wa.status = 'SIGNED'), " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_id = ?) " +
+			"FROM withdrawals w JOIN chamas c ON c.id = w.chama_id JOIN members m ON m.id = w.requested_by " +
+			"WHERE w.status = 'pending' AND w.requested_by <> ? " +
+				"AND EXISTS(SELECT 1 FROM chama_members cm WHERE cm.chama_id = w.chama_id AND cm.member_id = ? AND cm.status = 'active' AND cm.role IN ('admin', 'treasurer')) " +
+			"ORDER BY w.created_at DESC",
+			memberID, memberID, memberID,
+		)
+		if err != nil {
+			http.Error(w, "Failed to load withdrawal approvals", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var withdrawals []PendingWithdrawalApproval
+		for rows.Next() {
+			var item PendingWithdrawalApproval
+			var adminApproved, treasurerApproved, currentMemberSigned int
+			if err := rows.Scan(&item.ID, &item.ChamaID, &item.ChamaName, &item.RequesterName, &item.Amount, &item.Reason, &item.CreatedAt, &adminApproved, &treasurerApproved, &currentMemberSigned); err != nil {
+				http.Error(w, "Failed to read withdrawal approvals", http.StatusInternalServerError)
+				return
+			}
+			item.AdminApproved = adminApproved == 1
+			item.TreasurerApproved = treasurerApproved == 1
+			item.CurrentMemberSigned = currentMemberSigned == 1
+			withdrawals = append(withdrawals, item)
+		}
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Failed to read withdrawal approvals", http.StatusInternalServerError)
+			return
+		}
+
 		tmpl := template.Must(template.ParseFiles("withdraw-approve.html"))
-		tmpl.Execute(w, struct{ WithdrawalID int64 }{WithdrawalID: withdrawalID})
+		tmpl.Execute(w, struct { Role string; Withdrawals []PendingWithdrawalApproval }{Role: role, Withdrawals: withdrawals})
 	})
 
 	http.HandleFunc("/withdraw/approve", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			fmt.Fprintln(w, "Please submit this form using POST")
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -663,40 +724,46 @@ func startServer(db *sql.DB) {
 		}
 
 		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
-		if err != nil {
+		if err != nil || withdrawalID <= 0 {
 			http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest)
 			return
 		}
 
-		var chamaID int64
-		err = db.QueryRow("SELECT chama_id FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&chamaID)
+		var requestedBy, chamaID int64
+		var amount float64
+		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
 		if err != nil {
 			http.Error(w, "Withdrawal request not found", http.StatusNotFound)
 			return
 		}
+		if requestedBy == memberID {
+			http.Error(w, "You cannot approve your own withdrawal request", http.StatusForbidden)
+			return
+		}
+
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
 		if err != nil || (role != "admin" && role != "treasurer") {
 			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
 			return
 		}
 
-		fullyApproved, err := ApproveWithdrawal(db, withdrawalID, memberID)
-		if err != nil {
-			fmt.Fprintln(w, "Approval failed:", err)
+		if err := multisigService.RecordApproval(r.Context(), withdrawalID, memberID, role); err != nil {
+			http.Error(w, "Approval failed: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var requestedBy int64
-		var amount float64
-		db.QueryRow("SELECT requested_by, amount FROM withdrawals WHERE id = ?", withdrawalID).Scan(&requestedBy, &amount)
-		if fullyApproved {
-			CreateNotification(db, requestedBy, "Withdrawal approved", fmt.Sprintf("Your withdrawal request of KES %.2f has been approved.", amount), "withdrawal_approved")
-		} else {
-			CreateNotification(db, requestedBy, "Withdrawal approval recorded", fmt.Sprintf("An approval was recorded for your KES %.2f withdrawal request. More approvals may be required.", amount), "withdrawal_approval")
+		var status string
+		if err := db.QueryRow("SELECT status FROM withdrawals WHERE id = ?", withdrawalID).Scan(&status); err != nil {
+			http.Error(w, "Failed to read withdrawal status", http.StatusInternalServerError)
+			return
 		}
-		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
+		if status == "DISBURSED" {
+			CreateNotification(db, requestedBy, "Withdrawal approved", fmt.Sprintf("Your withdrawal request of KES %.2f has been approved by both the Admin and Treasurer.", amount), "withdrawal_approved")
+		} else {
+			CreateNotification(db, requestedBy, "Withdrawal approval recorded", fmt.Sprintf("An approval was recorded for your KES %.2f withdrawal request. The other required approver still needs to sign.", amount), "withdrawal_approval")
+		}
+		http.Redirect(w, r, "/withdraw/approve-page", http.StatusSeeOther)
 	})
-
 	http.HandleFunc("/withdraw/reject", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
