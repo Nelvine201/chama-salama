@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
- )
+)
 
 var (
 	ErrInvalidRole       = errors.New("approver role must be ADMIN or TREASURER")
 	ErrDuplicateApproval = errors.New("approver has already signed this withdrawal")
-	ErrWithdrawalMissing  = errors.New("withdrawal request not found")
- )
+	ErrWithdrawalMissing = errors.New("withdrawal request not found")
+)
 
 type Store interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
