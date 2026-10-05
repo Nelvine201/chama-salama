@@ -1,12 +1,11 @@
 -- Multi-signature withdrawal approvals migration.
--- Non-destructive: the legacy approval rows are copied into a preserved
--- withdrawal_approvals_legacy table before the new schema is created.
+-- Non-destructive: preserves the existing approval rows and keeps the
+-- legacy column names as compatibility fields while adding the new
+-- role-based approval fields.
 --
--- This migration targets the existing Chama Salama schema where
--- withdrawal_approvals currently contains:
---   withdrawal_id, member_id, approved_at
---
--- Run once against an existing database.
+-- This migration targets the existing Chama Salama SQLite/Turso schema.
+-- The application currently calls the withdrawal table "withdrawals";
+-- withdrawal_request_id references withdrawals(id).
 
 BEGIN;
 
@@ -16,9 +15,16 @@ CREATE TABLE withdrawal_approvals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     withdrawal_request_id INTEGER NOT NULL,
     approver_id INTEGER NOT NULL,
-    approver_role TEXT NOT NULL,
+    approver_role TEXT NOT NULL DEFAULT 'MEMBER',
     status TEXT NOT NULL DEFAULT 'SIGNED',
     signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    -- Legacy compatibility fields. Existing approval code can continue to
+    -- read/write these while the new multisig service uses the fields above.
+    withdrawal_id INTEGER,
+    member_id INTEGER,
+    approved_at DATETIME,
+
     FOREIGN KEY (withdrawal_request_id) REFERENCES withdrawals(id),
     FOREIGN KEY (approver_id) REFERENCES members(id)
 );
@@ -28,13 +34,19 @@ INSERT INTO withdrawal_approvals (
     approver_id,
     approver_role,
     status,
-    signed_at
+    signed_at,
+    withdrawal_id,
+    member_id,
+    approved_at
 )
 SELECT
     legacy.withdrawal_id,
     legacy.member_id,
     UPPER(COALESCE(cm.role, m.role, 'MEMBER')),
     'SIGNED',
+    legacy.approved_at,
+    legacy.withdrawal_id,
+    legacy.member_id,
     legacy.approved_at
 FROM withdrawal_approvals_legacy AS legacy
 LEFT JOIN withdrawals AS w
