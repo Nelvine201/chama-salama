@@ -12,6 +12,9 @@ var (
 	ErrInvalidRole       = errors.New("approver role must be ADMIN or TREASURER")
 	ErrDuplicateApproval = errors.New("approver has already signed this withdrawal")
 	ErrWithdrawalMissing = errors.New("withdrawal request not found")
+	ErrSelfApproval      = errors.New("requester cannot approve their own withdrawal")
+	ErrNotMember         = errors.New("approver is not an active member of this Chama")
+	ErrRoleMismatch      = errors.New("approver role does not match their active Chama role")
 )
 
 type Store interface {
@@ -41,15 +44,31 @@ func (s *Service) RecordApproval(ctx context.Context, withdrawalID, userID int64
 		return err
 	}
 	defer tx.Rollback()
-	var exists int
-	err = tx.QueryRowContext(ctx, "SELECT 1 FROM withdrawals WHERE id = ? LIMIT 1", withdrawalID).Scan(&exists)
+	var requestedBy, chamaID int64
+	err = tx.QueryRowContext(ctx, "SELECT requested_by, chama_id FROM withdrawals WHERE id = ? AND status = 'pending' LIMIT 1", withdrawalID).Scan(&requestedBy, &chamaID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrWithdrawalMissing
 	}
 	if err != nil {
 		return err
 	}
-	var existing int
+	if requestedBy == userID {
+		return ErrSelfApproval
+	}
+
+	var memberRole string
+	err = tx.QueryRowContext(ctx, "SELECT role FROM chama_members WHERE chama_id = ? AND member_id = ? AND status = 'active'", chamaID, userID).Scan(&memberRole)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotMember
+	}
+	if err != nil {
+		return err
+	}
+	if strings.ToUpper(memberRole) != role {
+		return ErrRoleMismatch
+	}
+
+	var existing
 	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM withdrawal_approvals WHERE withdrawal_request_id = ? AND approver_id = ?", withdrawalID, userID).Scan(&existing)
 	if err != nil {
 		return err
