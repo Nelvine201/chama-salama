@@ -68,7 +68,7 @@ func (s *Service) RecordApproval(ctx context.Context, withdrawalID, userID int64
 		return ErrRoleMismatch
 	}
 
-	var existing
+	var existing int
 	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM withdrawal_approvals WHERE withdrawal_request_id = ? AND approver_id = ?", withdrawalID, userID).Scan(&existing)
 	if err != nil {
 		return err
