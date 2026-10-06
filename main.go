@@ -75,6 +75,10 @@ func main() {
 
 		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
 
+		"ALTER TABLE withdrawal_approvals ADD COLUMN approver_role TEXT DEFAULT 'MEMBER'",
+		"ALTER TABLE withdrawal_approvals ADD COLUMN status TEXT DEFAULT 'SIGNED'",
+		"ALTER TABLE withdrawal_approvals ADD COLUMN signed_at DATETIME",
+
 		"ALTER TABLE group_settings ADD COLUMN chama_id INTEGER",
 		"ALTER TABLE group_settings ADD COLUMN payout_position INTEGER DEFAULT 0",
 		"ALTER TABLE group_settings ADD COLUMN next_payout_date TEXT",
