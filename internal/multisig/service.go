@@ -69,19 +69,19 @@ func (s *Service) RecordApproval(ctx context.Context, withdrawalID, userID int64
 	}
 
 	var existing int
-	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM withdrawal_approvals WHERE withdrawal_request_id = ? AND approver_id = ?", withdrawalID, userID).Scan(&existing)
+	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM withdrawal_approvals WHERE withdrawal_id = ? AND member_id = ?", withdrawalID, userID).Scan(&existing)
 	if err != nil {
 		return err
 	}
 	if existing > 0 {
 		return ErrDuplicateApproval
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO withdrawal_approvals (withdrawal_request_id, approver_id, approver_role, status, signed_at, withdrawal_id, member_id, approved_at) VALUES (?, ?, ?, 'SIGNED', CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP)", withdrawalID, userID, role, withdrawalID, userID)
+	_, err = tx.ExecContext(ctx, "INSERT INTO withdrawal_approvals (withdrawal_id, member_id, approver_role, status, signed_at, approved_at) VALUES (?, ?, ?, 'SIGNED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", withdrawalID, userID, role, withdrawalID, userID)
 	if err != nil {
 		return err
 	}
 	var adminSigned, treasurerSigned int
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM withdrawal_approvals WHERE withdrawal_request_id = ? AND approver_role = 'ADMIN' AND status = 'SIGNED'), EXISTS(SELECT 1 FROM withdrawal_approvals WHERE withdrawal_request_id = ? AND approver_role = 'TREASURER' AND status = 'SIGNED')", withdrawalID, withdrawalID).Scan(&adminSigned, &treasurerSigned)
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM withdrawal_approvals WHERE withdrawal_id = ? AND approver_role = 'ADMIN' AND status = 'SIGNED'), EXISTS(SELECT 1 FROM withdrawal_approvals WHERE withdrawal_id = ? AND approver_role = 'TREASURER' AND status = 'SIGNED')", withdrawalID, withdrawalID).Scan(&adminSigned, &treasurerSigned)
 	if err != nil {
 		return err
 	}
