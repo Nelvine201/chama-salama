@@ -1105,7 +1105,7 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		_, err := getLoggedInMemberID(r, db)
+		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
@@ -1118,15 +1118,43 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		identifier := r.FormValue("identifier")
-		role := r.FormValue("role")
+		// Only the Chama admin can assign roles through invitations.
+		roleInChama, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil || roleInChama != "admin" {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+
+		identifier := strings.TrimSpace(r.FormValue("identifier"))
+		role := strings.ToLower(strings.TrimSpace(r.FormValue("role")))
 		if role == "" {
 			role = "member"
 		}
 
+		if role != "member" && role != "treasurer" {
+			http.Error(w, "Only member or treasurer roles can be assigned here", http.StatusBadRequest)
+			return
+		}
+
+		if role == "treasurer" {
+			var existingTreasurer int
+			err = db.QueryRow(
+				"SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND role = 'treasurer' AND status IN ('active', 'pending')",
+				chamaID,
+			).Scan(&existingTreasurer)
+			if err != nil {
+				http.Error(w, "Failed to check Treasurer assignment", http.StatusInternalServerError)
+				return
+			}
+			if existingTreasurer > 0 {
+				http.Error(w, "This Chama already has an active or pending Treasurer", http.StatusConflict)
+				return
+			}
+		}
+
 		err = InviteMember(db, chamaID, identifier, role)
 		if err != nil {
-			fmt.Fprintln(w, "Invite failed:", err)
+			http.Error(w, "Invite failed: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
