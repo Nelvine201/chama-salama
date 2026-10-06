@@ -65,6 +65,9 @@ CREATE TABLE IF NOT EXISTS withdrawal_approvals (
     withdrawal_id INTEGER NOT NULL,
     member_id INTEGER NOT NULL,
     approved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    approver_role TEXT DEFAULT 'MEMBER',
+    status TEXT DEFAULT 'SIGNED',
+    signed_at DATETIME,
     FOREIGN KEY (withdrawal_id) REFERENCES withdrawals(id),
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
