@@ -674,9 +674,9 @@ func startServer(db *sql.DB) {
 
 		rows, err := db.Query(
 			"SELECT w.id, w.chama_id, c.name, m.name, w.amount, COALESCE(w.reason, ''), COALESCE(w.created_at, ''), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_role = 'ADMIN' AND wa.status = 'SIGNED'), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_role = 'TREASURER' AND wa.status = 'SIGNED'), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_request_id = w.id AND wa.approver_id = ?) " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'ADMIN' AND wa.status = 'SIGNED'), " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'TREASURER' AND wa.status = 'SIGNED'), " +
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.member_id = ?) " +
 			"FROM withdrawals w JOIN chamas c ON c.id = w.chama_id JOIN members m ON m.id = w.requested_by " +
 			"WHERE w.status = 'pending' AND w.requested_by <> ? " +
 				"AND EXISTS(SELECT 1 FROM chama_members cm WHERE cm.chama_id = w.chama_id AND cm.member_id = ? AND cm.status = 'active' AND cm.role IN ('admin', 'treasurer')) " +
