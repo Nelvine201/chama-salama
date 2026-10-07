@@ -159,6 +159,11 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, "Failed to load Chama role", http.StatusInternalServerError)
+			return
+		}
 
 		var history []HistoryRow
 		rows, err := db.Query(`SELECT 'Member joined', m.name, 'Joined the Chama', cm.joined_at
