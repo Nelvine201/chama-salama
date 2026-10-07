@@ -15,15 +15,15 @@ import (
 )
 
 type PendingWithdrawalApproval struct {
-	ID int64
-	ChamaID int64
-	ChamaName string
-	RequesterName string
-	Amount float64
-	Reason string
-	CreatedAt string
-	AdminApproved bool
-	TreasurerApproved bool
+	ID                  int64
+	ChamaID             int64
+	ChamaName           string
+	RequesterName       string
+	Amount              float64
+	Reason              string
+	CreatedAt           string
+	AdminApproved       bool
+	TreasurerApproved   bool
 	CurrentMemberSigned bool
 }
 
@@ -673,14 +673,14 @@ func startServer(db *sql.DB) {
 		}
 
 		rows, err := db.Query(
-			"SELECT w.id, w.chama_id, c.name, m.name, w.amount, COALESCE(w.reason, ''), COALESCE(w.created_at, ''), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'ADMIN' AND wa.status = 'SIGNED'), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'TREASURER' AND wa.status = 'SIGNED'), " +
-				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.member_id = ?) " +
-			"FROM withdrawals w JOIN chamas c ON c.id = w.chama_id JOIN members m ON m.id = w.requested_by " +
-			"WHERE w.status = 'pending' AND w.requested_by <> ? " +
-				"AND EXISTS(SELECT 1 FROM chama_members cm WHERE cm.chama_id = w.chama_id AND cm.member_id = ? AND cm.status = 'active' AND cm.role IN ('admin', 'treasurer')) " +
-			"ORDER BY w.created_at DESC",
+			"SELECT w.id, w.chama_id, c.name, m.name, w.amount, COALESCE(w.reason, ''), COALESCE(w.created_at, ''), "+
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'ADMIN' AND wa.status = 'SIGNED'), "+
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.approver_role = 'TREASURER' AND wa.status = 'SIGNED'), "+
+				"EXISTS(SELECT 1 FROM withdrawal_approvals wa WHERE wa.withdrawal_id = w.id AND wa.member_id = ?) "+
+				"FROM withdrawals w JOIN chamas c ON c.id = w.chama_id JOIN members m ON m.id = w.requested_by "+
+				"WHERE w.status = 'pending' AND w.requested_by <> ? "+
+				"AND EXISTS(SELECT 1 FROM chama_members cm WHERE cm.chama_id = w.chama_id AND cm.member_id = ? AND cm.status = 'active' AND cm.role IN ('admin', 'treasurer')) "+
+				"ORDER BY w.created_at DESC",
 			memberID, memberID, memberID,
 		)
 		if err != nil {
@@ -708,7 +708,10 @@ func startServer(db *sql.DB) {
 		}
 
 		tmpl := template.Must(template.ParseFiles("withdraw-approve.html"))
-		tmpl.Execute(w, struct { Role string; Withdrawals []PendingWithdrawalApproval }{Role: role, Withdrawals: withdrawals})
+		tmpl.Execute(w, struct {
+			Role        string
+			Withdrawals []PendingWithdrawalApproval
+		}{Role: role, Withdrawals: withdrawals})
 	})
 
 	http.HandleFunc("/withdraw/approve", func(w http.ResponseWriter, r *http.Request) {
@@ -769,62 +772,34 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		if err := requireSameOrigin(r); err != nil {
-			http.Error(w, "Invalid request origin", http.StatusForbidden)
-			return
-		}
-
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
-
 		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
-		if err != nil || withdrawalID <= 0 {
+		if err != nil {
 			http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest)
 			return
 		}
-
 		var requestedBy, chamaID int64
 		var amount float64
-		err = db.QueryRow(
-			"SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'",
-			withdrawalID,
-		).Scan(&requestedBy, &chamaID, &amount)
+		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
 		if err != nil {
 			http.Error(w, "Withdrawal request not found", http.StatusNotFound)
 			return
 		}
-
-		if requestedBy == memberID {
-			http.Error(w, "You cannot reject your own withdrawal request", http.StatusForbidden)
-			return
-		}
-
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
 		if err != nil || (role != "admin" && role != "treasurer") {
 			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
 			return
 		}
-
-		_, err = db.Exec(
-			"UPDATE withdrawals SET status = 'rejected' WHERE id = ? AND status = 'pending'",
-			withdrawalID,
-		)
+		_, err = db.Exec("UPDATE withdrawals SET status = 'rejected' WHERE id = ?", withdrawalID)
 		if err != nil {
 			http.Error(w, "Failed to reject withdrawal", http.StatusInternalServerError)
 			return
 		}
-
-		CreateNotification(
-			db,
-			requestedBy,
-			"Withdrawal rejected",
-			fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount),
-			"withdrawal_rejected",
-		)
+		CreateNotification(db, requestedBy, "Withdrawal rejected", fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount), "withdrawal_rejected")
 		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
 
@@ -1226,3 +1201,77 @@ func startServer(db *sql.DB) {
 		}
 
 		chamaIDStr := r.FormValue("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			fmt.Fprintln(w, "Invalid chama ID")
+			return
+		}
+
+		accept := r.FormValue("accept") == "true"
+
+		err = RespondToInvitation(db, chamaID, memberID, accept)
+		if err != nil {
+			fmt.Fprintln(w, "Failed to respond:", err)
+			return
+		}
+
+		http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+	})
+	http.HandleFunc("/api/chama/summary", func(w http.ResponseWriter, r *http.Request) {
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Error(w, `{"error":"not logged in"}`, http.StatusUnauthorized)
+			return
+		}
+
+		chamaIDStr := r.URL.Query().Get("chama_id")
+		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, `{"error":"invalid chama id"}`, http.StatusBadRequest)
+			return
+		}
+
+		var chamaName string
+		db.QueryRow("SELECT name FROM chamas WHERE id = ?", chamaID).Scan(&chamaName)
+
+		cycle, err := GetCycleSummary(db, chamaID)
+		if err != nil {
+			http.Error(w, `{"error":"failed to load cycle"}`, http.StatusInternalServerError)
+
+			return
+		}
+		user, err := GetUserCycleSummary(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, `{"error":"failed to load user summary"}`, http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"chama_id":   chamaID,
+			"chama_name": chamaName,
+			"current_cycle": map[string]interface{}{
+				"cycle_number":             cycle.CycleNumber,
+				"due_date":                 cycle.DueDate,
+				"target_amount_per_member": cycle.TargetAmount,
+				"total_expected_pool":      cycle.TotalExpectedPool,
+				"total_collected_pool":     cycle.TotalCollected,
+				"active_recipient_name":    cycle.RecipientName,
+				"members_paid_count":       cycle.MembersPaidCount,
+				"total_active_members":     cycle.TotalActive,
+			},
+			"user_summary": map[string]interface{}{
+				"user_id":                memberID,
+				"has_paid_current_cycle": user.HasPaid,
+				"queue_position":         user.QueuePosition,
+				"expected_payout_date":   user.ExpectedPayoutDate,
+				"estimated_lump_sum":     user.ExpectedLumpSum,
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	fmt.Println("Server starting on http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
+}
