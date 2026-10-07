@@ -103,6 +103,11 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, "Failed to load Chama role", http.StatusInternalServerError)
+			return
+		}
 
 		amount, frequency, _ := GetGroupSettingsForChama(db, chamaID)
 		rows, err := db.Query(`SELECT c.cycle_number, COALESCE(m.name, 'Unassigned'), c.due_date
@@ -138,9 +143,10 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		tmpl.Execute(w, struct {
 			ChamaID   int64
 			ChamaName string
+			Role      string
 			Frequency string
 			Rows      []RotationRow
-		}{chamaID, chamaName, frequency, rotation})
+		}{chamaID, chamaName, role, frequency, rotation})
 	})
 
 	http.HandleFunc("/history", func(w http.ResponseWriter, r *http.Request) {
@@ -186,8 +192,9 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		tmpl.Execute(w, struct {
 			ChamaID   int64
 			ChamaName string
+			Role      string
 			Rows      []HistoryRow
-		}{chamaID, chamaName, history})
+		}{chamaID, chamaName, role, history})
 	})
 
 	http.HandleFunc("/ledger", func(w http.ResponseWriter, r *http.Request) {
