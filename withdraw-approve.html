@@ -62,18 +62,17 @@
         {{if .CurrentMemberSigned}}
           <button disabled>You already approved this withdrawal</button>
         {{else}}
-          <form action="/withdraw/approve" method="POST">
+        <div style="display: flex; gap: 10px;">
+          <form action="/withdraw/approve" method="POST" style="flex: 1;">
             <input type="hidden" name="withdrawal_id" value="{{.ID}}">
             <button type="submit">Approve withdrawal</button>
           </form>
+          <form action="/withdraw/reject" method="POST" style="flex: 1;">
+            <input type="hidden" name="withdrawal_id" value="{{.ID}}">
+            <button type="submit" style="background: #c96f4a;">Reject</button>
+          </form>
+        </div>
         {{end}}
-      </div>
-      {{end}}
-    {{else}}
-      <div class="empty">
-        <p>No pending withdrawals need your approval.</p>
-      </div>
-    {{end}}
 
     <p class="back"><a href="/dashboard">Back to dashboard</a></p>
   </main>
