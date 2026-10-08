@@ -4,77 +4,284 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chama Salama — Withdrawal Approvals</title>
+
   <style>
-    body { font-family: sans-serif; margin: 0; color: #26241f; background: #fbf8f1; }
-    header { display: flex; align-items: center; padding: 20px 40px; border-bottom: 1px solid #ddd; }
-    header svg { margin-right: 10px; }
-    header h1 { font-size: 20px; color: #1f5c3d; margin: 0; }
-    main { max-width: 760px; margin: 40px auto; padding: 0 20px; }
-    .intro { margin-bottom: 24px; }
-    .intro h2 { color: #1f5c3d; margin-bottom: 6px; }
-    .intro p { color: #666; margin-top: 0; }
-    .card { background: #f4efe2; border-radius: 10px; padding: 22px; margin-bottom: 16px; }
-    .amount { font-size: 24px; font-weight: bold; color: #1f5c3d; }
-    .meta { color: #555; font-size: 14px; margin: 7px 0; }
-    .reason { margin: 14px 0; }
-    .approvals { font-size: 13px; margin: 14px 0; }
-    .signed { color: #2f7a52; font-weight: bold; }
-    .pending { color: #c96f4a; font-weight: bold; }
-    button { width: 100%; padding: 10px; background: #1f5c3d; color: #fbf8f1; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    button:disabled { background: #aaa; cursor: not-allowed; }
-    .empty { background: #f4efe2; border-radius: 10px; padding: 28px; text-align: center; color: #666; }
-    a { color: #2f7a52; }
-    .back { margin-top: 24px; font-size: 13px; }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      color: #26241f;
+      background: #fbf8f1;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      padding: 20px 40px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    header svg {
+      margin-right: 10px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      color: #1f5c3d;
+      margin: 0;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .intro {
+      margin-bottom: 24px;
+    }
+
+    .intro h2 {
+      color: #1f5c3d;
+      margin-bottom: 6px;
+    }
+
+    .intro p {
+      color: #666;
+      margin-top: 0;
+    }
+
+    .card {
+      background: #f4efe2;
+      border-radius: 10px;
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+
+    .amount {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1f5c3d;
+    }
+
+    .meta {
+      color: #555;
+      font-size: 14px;
+      margin: 7px 0;
+    }
+
+    .reason {
+      margin: 14px 0;
+    }
+
+    .approvals {
+      font-size: 13px;
+      margin: 14px 0;
+    }
+
+    .signed {
+      color: #2f7a52;
+      font-weight: bold;
+    }
+
+    .pending {
+      color: #c96f4a;
+      font-weight: bold;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #1f5c3d;
+      color: #fbf8f1;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .empty {
+      background: #f4efe2;
+      border-radius: 10px;
+      padding: 28px;
+      text-align: center;
+      color: #666;
+    }
+
+    a {
+      color: #2f7a52;
+    }
+
+    .back {
+      margin-top: 24px;
+      font-size: 13px;
+    }
   </style>
 </head>
+
 <body>
+
   <header>
     <svg width="28" height="28" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="46" fill="none" stroke="#e6c258" stroke-width="4"/>
-      <circle cx="50" cy="50" r="40" fill="#f4efe2"/>
-      <path d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z" fill="#2f7a52"/>
-      <circle cx="50" cy="42" r="4" fill="#e6c258"/>
+      <circle
+        cx="50"
+        cy="50"
+        r="46"
+        fill="none"
+        stroke="#e6c258"
+        stroke-width="4"
+      />
+
+      <circle
+        cx="50"
+        cy="50"
+        r="40"
+        fill="#f4efe2"
+      />
+
+      <path
+        d="M14 50 Q50 96 86 50 L80 70 Q50 86 20 70 Z"
+        fill="#2f7a52"
+      />
+
+      <circle
+        cx="50"
+        cy="42"
+        r="4"
+        fill="#e6c258"
+      />
     </svg>
+
     <h1>Chama Salama</h1>
   </header>
+
   <main>
+
     <div class="intro">
       <h2>Pending withdrawal approvals</h2>
-      <p>You are signed in as {{.Role}}. Each withdrawal needs an Admin and a Treasurer approval.</p>
+
+      <p>
+        You are signed in as {{.Role}}.
+        Each withdrawal needs an Admin and a Treasurer approval.
+      </p>
     </div>
 
     {{if .Withdrawals}}
-      {{range .Withdrawals}}
-      <div class="card">
-        <div class="amount">KES {{printf "%.2f" .Amount}}</div>
-        <div class="meta"><strong>Chama:</strong> {{.ChamaName}}</div>
-        <div class="meta"><strong>Requested by:</strong> {{.RequesterName}}</div>
-        <div class="reason"><strong>Reason:</strong> {{.Reason}}</div>
-        <div class="approvals">
-          <span class="{{if .AdminApproved}}signed{{else}}pending{{end}}">
-            Admin: {{if .AdminApproved}}Approved{{else}}Pending{{end}}
-          </span>
-          &nbsp;·&nbsp;
-          <span class="{{if .TreasurerApproved}}signed{{else}}pending{{end}}">
-            Treasurer: {{if .TreasurerApproved}}Approved{{else}}Pending{{end}}
-          </span>
-        </div>
-        {{if .CurrentMemberSigned}}
-          <button disabled>You already approved this withdrawal</button>
-        {{else}}
-        <div style="display: flex; gap: 10px;">
-          <form action="/withdraw/approve" method="POST" style="flex: 1;">
-            <input type="hidden" name="withdrawal_id" value="{{.ID}}">
-            <button type="submit">Approve withdrawal</button>
-          </form>
-          <form action="/withdraw/reject" method="POST" style="flex: 1;">
-            <input type="hidden" name="withdrawal_id" value="{{.ID}}">
-            <button type="submit" style="background: #c96f4a;">Reject</button>
-          </form>
-        </div>
-        {{end}}
 
-    <p class="back"><a href="/dashboard">Back to dashboard</a></p>
+      {{range .Withdrawals}}
+
+        <div class="card">
+
+          <div class="amount">
+            KES {{printf "%.2f" .Amount}}
+          </div>
+
+          <div class="meta">
+            <strong>Chama:</strong> {{.ChamaName}}
+          </div>
+
+          <div class="meta">
+            <strong>Requested by:</strong> {{.RequesterName}}
+          </div>
+
+          <div class="reason">
+            <strong>Reason:</strong> {{.Reason}}
+          </div>
+
+          <div class="approvals">
+
+            <span class="{{if .AdminApproved}}signed{{else}}pending{{end}}">
+              Admin:
+              {{if .AdminApproved}}
+                Approved
+              {{else}}
+                Pending
+              {{end}}
+            </span>
+
+            &nbsp;·&nbsp;
+
+            <span class="{{if .TreasurerApproved}}signed{{else}}pending{{end}}">
+              Treasurer:
+              {{if .TreasurerApproved}}
+                Approved
+              {{else}}
+                Pending
+              {{end}}
+            </span>
+
+          </div>
+
+          {{if .CurrentMemberSigned}}
+
+            <button type="button" disabled>
+              You already approved this withdrawal
+            </button>
+
+          {{else}}
+
+            <div style="display: flex; gap: 10px;">
+
+              <form
+                action="/withdraw/approve"
+                method="POST"
+                style="flex: 1;"
+              >
+                <input
+                  type="hidden"
+                  name="withdrawal_id"
+                  value="{{.ID}}"
+                >
+
+                <button type="submit">
+                  Approve withdrawal
+                </button>
+              </form>
+
+              <form
+                action="/withdraw/reject"
+                method="POST"
+                style="flex: 1;"
+              >
+                <input
+                  type="hidden"
+                  name="withdrawal_id"
+                  value="{{.ID}}"
+                >
+
+                <button
+                  type="submit"
+                  style="background: #c96f4a;"
+                >
+                  Reject
+                </button>
+              </form>
+
+            </div>
+
+          {{end}}
+
+        </div>
+
+      {{end}}
+
+    {{else}}
+
+      <div class="empty">
+        <p>No pending withdrawals need your approval.</p>
+      </div>
+
+    {{end}}
+
+    <p class="back">
+      <a href="/dashboard">Back to dashboard</a>
+    </p>
+
   </main>
+
 </body>
 </html>
