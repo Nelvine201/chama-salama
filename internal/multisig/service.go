@@ -76,7 +76,13 @@ func (s *Service) RecordApproval(ctx context.Context, withdrawalID, userID int64
 	if existing > 0 {
 		return ErrDuplicateApproval
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO withdrawal_approvals (withdrawal_id, member_id, approver_role, status, signed_at, approved_at) VALUES (?, ?, ?, 'SIGNED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", withdrawalID, userID, role, withdrawalID, userID)
+	_, err = tx.ExecContext(
+		ctx,
+		"INSERT INTO withdrawal_approvals (withdrawal_id, member_id, approver_role, status, signed_at, approved_at) VALUES (?, ?, ?, 'SIGNED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+		withdrawalID,
+		userID,
+		role,
+	)
 	if err != nil {
 		return err
 	}

@@ -719,6 +719,10 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
 
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
@@ -772,37 +776,76 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
+
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
 			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 			return
 		}
+
 		withdrawalID, err := strconv.ParseInt(r.FormValue("withdrawal_id"), 10, 64)
-		if err != nil {
+		if err != nil || withdrawalID <= 0 {
 			http.Error(w, "Invalid withdrawal ID", http.StatusBadRequest)
 			return
 		}
+
 		var requestedBy, chamaID int64
 		var amount float64
-		err = db.QueryRow("SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'", withdrawalID).Scan(&requestedBy, &chamaID, &amount)
+
+		err = db.QueryRow(
+			"SELECT requested_by, chama_id, amount FROM withdrawals WHERE id = ? AND status = 'pending'",
+			withdrawalID,
+		).Scan(&requestedBy, &chamaID, &amount)
 		if err != nil {
-			http.Error(w, "Withdrawal request not found", http.StatusNotFound)
+			http.Error(w, "Withdrawal request not found or no longer pending", http.StatusNotFound)
 			return
 		}
+
+		if requestedBy == memberID {
+			http.Error(w, "You cannot reject your own withdrawal request", http.StatusForbidden)
+			return
+		}
+
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
 		if err != nil || (role != "admin" && role != "treasurer") {
 			http.Error(w, "Admin or treasurer approval required", http.StatusForbidden)
 			return
 		}
-		_, err = db.Exec("UPDATE withdrawals SET status = 'rejected' WHERE id = ?", withdrawalID)
+
+		result, err := db.Exec(
+			"UPDATE withdrawals SET status = 'rejected' WHERE id = ? AND status = 'pending'",
+			withdrawalID,
+		)
 		if err != nil {
 			http.Error(w, "Failed to reject withdrawal", http.StatusInternalServerError)
 			return
 		}
-		CreateNotification(db, requestedBy, "Withdrawal rejected", fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount), "withdrawal_rejected")
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			http.Error(w, "Failed to verify withdrawal rejection", http.StatusInternalServerError)
+			return
+		}
+		if rowsAffected != 1 {
+			http.Error(w, "Withdrawal request is no longer pending", http.StatusConflict)
+			return
+		}
+
+		CreateNotification(
+			db,
+			requestedBy,
+			"Withdrawal rejected",
+			fmt.Sprintf("Your withdrawal request of KES %.2f was rejected.", amount),
+			"withdrawal_rejected",
+		)
+
 		http.Redirect(w, r, "/notifications", http.StatusSeeOther)
 	})
-
 	http.HandleFunc("/notifications", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
