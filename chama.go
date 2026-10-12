@@ -355,16 +355,16 @@ func GetMemberRoleInChama(db *sql.DB, chamaID, memberID int64) (string, error) {
 }
 
 type ChamaCard struct {
-	ChamaID            int64
-	ChamaName          string
-	Role               string
-	MemberCount        int
-	QueuePosition      int
-	NextRecipientName  string
-	NextPayoutDate     string
-	ContributionPaid   bool
-	ContributionAmount float64
-	PendingInviteCount int
+	ChamaID                 int64
+	ChamaName               string
+	Role                    string
+	MemberCount             int
+	QueuePosition           int
+	NextRecipientName       string
+	NextPayoutDate          string
+	ContributionPaid        bool
+	ContributionAmount      float64
+	PendingInviteCount      int
 	PendingJoinRequestCount int
 }
 
@@ -490,6 +490,7 @@ func GetOrCreateCurrentCycle(db *sql.DB, chamaID int64) (int64, int, string, err
 	var cycleID int64
 	var cycleNumber int
 	var dueDate string
+
 	err := db.QueryRow(
 		"SELECT id, cycle_number, due_date FROM cycles WHERE chama_id = ? ORDER BY cycle_number DESC LIMIT 1",
 		chamaID,
@@ -497,19 +498,55 @@ func GetOrCreateCurrentCycle(db *sql.DB, chamaID int64) (int64, int, string, err
 
 	if err == sql.ErrNoRows {
 		dueDate = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+
+		var position int
+		err = db.QueryRow(
+			"SELECT payout_position FROM group_settings WHERE chama_id = ? LIMIT 1",
+			chamaID,
+		).Scan(&position)
+		if err != nil && err != sql.ErrNoRows {
+			return 0, 0, "", err
+		}
+
+		var recipientID sql.NullInt64
+		err = db.QueryRow(
+			`SELECT member_id FROM chama_members
+			 WHERE chama_id = ? AND status = 'active'
+			 ORDER BY joined_at
+			 LIMIT 1 OFFSET ?`,
+			chamaID, position,
+		).Scan(&recipientID)
+		if err != nil && err != sql.ErrNoRows {
+			return 0, 0, "", err
+		}
+
+		var recipientValue interface{}
+		if recipientID.Valid {
+			recipientValue = recipientID.Int64
+		}
+
 		result, insertErr := db.Exec(
-			"INSERT INTO cycles (chama_id, cycle_number, due_date) VALUES (?, 1, ?)",
-			chamaID, dueDate,
+			`INSERT INTO cycles
+			 (chama_id, cycle_number, due_date, recipient_member_id)
+			 VALUES (?, 1, ?, ?)`,
+			chamaID, dueDate, recipientValue,
 		)
 		if insertErr != nil {
 			return 0, 0, "", insertErr
 		}
-		cycleID, _ = result.LastInsertId()
+
+		cycleID, insertErr = result.LastInsertId()
+		if insertErr != nil {
+			return 0, 0, "", insertErr
+		}
+
 		return cycleID, 1, dueDate, nil
 	}
+
 	if err != nil {
 		return 0, 0, "", err
 	}
+
 	return cycleID, cycleNumber, dueDate, nil
 }
 
