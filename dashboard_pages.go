@@ -63,11 +63,13 @@ func activeChamaForRequest(db *sql.DB, r *http.Request, memberID int64) (int64, 
 		}
 		return chamas[0].ChamaID, chamas[0].ChamaName, true
 	}
+
 	var name string
 	err = db.QueryRow(
 		"SELECT c.name FROM chamas c JOIN chama_members cm ON cm.chama_id=c.id WHERE c.id=? AND cm.member_id=? AND cm.status='active'",
 		id, memberID,
 	).Scan(&name)
+
 	return id, name, err == nil
 }
 
@@ -84,11 +86,13 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		if !ok {
 			return
 		}
+
 		profile, err := GetMemberProfile(db, memberID)
 		if err != nil {
 			http.Error(w, "Failed to load settings", http.StatusInternalServerError)
 			return
 		}
+
 		tmpl := templateMust("settings.html")
 		tmpl.Execute(w, profile)
 	})
@@ -98,11 +102,13 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		if !ok {
 			return
 		}
+
 		chamaID, chamaName, ok := activeChamaForRequest(db, r, memberID)
 		if !ok {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
 		if err != nil {
 			http.Error(w, "Failed to load Chama role", http.StatusInternalServerError)
@@ -110,33 +116,59 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		}
 
 		amount, frequency, _ := GetGroupSettingsForChama(db, chamaID)
-		rows, err := db.Query(`SELECT c.cycle_number, COALESCE(m.name, 'Unassigned'), c.due_date
-			FROM cycles c LEFT JOIN members m ON m.id=c.recipient_member_id
-			WHERE c.chama_id=? ORDER BY c.cycle_number`, chamaID)
+
+		rows, err := db.Query(`
+			SELECT c.cycle_number,
+			       COALESCE(m.name, 'Unassigned'),
+			       c.due_date,
+			       c.status
+			FROM cycles c
+			LEFT JOIN members m ON m.id = c.recipient_member_id
+			WHERE c.chama_id = ?
+			ORDER BY c.cycle_number
+		`, chamaID)
 		if err != nil {
-			http.Error(w, "Failed to load rotation", 500)
+			http.Error(w, "Failed to load rotation", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
 
 		var rotation []RotationRow
 		now := time.Now()
+
 		for rows.Next() {
 			var round int
-			var name, date string
-			if err := rows.Scan(&round, &name, &date); err != nil {
-				continue
+			var name, date, cycleStatus string
+
+			if err := rows.Scan(&round, &name, &date, &cycleStatus); err != nil {
+				http.Error(w, "Failed to read rotation schedule", http.StatusInternalServerError)
+				return
 			}
+
 			status := "Upcoming"
-			if parsed, err := time.Parse("2006-01-02", date); err == nil {
-				if parsed.Before(now.Truncate(24 * time.Hour)) {
-					status = "Completed"
-				}
+
+			if cycleStatus == "completed" {
+				status = "Completed"
+			} else if parsed, err := time.Parse("2006-01-02", date); err == nil {
 				if parsed.Year() == now.Year() && parsed.YearDay() == now.YearDay() {
 					status = "In Progress"
+				} else if parsed.Before(now.Truncate(24 * time.Hour)) {
+					status = "Overdue"
 				}
 			}
-			rotation = append(rotation, RotationRow{round, name, date, amount, status})
+
+			rotation = append(rotation, RotationRow{
+				Round:  round,
+				Name:   name,
+				Date:   date,
+				Amount: amount,
+				Status: status,
+			})
+		}
+
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Failed to read rotation schedule", http.StatusInternalServerError)
+			return
 		}
 
 		tmpl := templateMust("rotation.html")
@@ -149,16 +181,59 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		}{chamaID, chamaName, role, frequency, rotation})
 	})
 
+	http.HandleFunc("/rotation/complete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		memberID, ok := dashboardMemberID(w, r, db)
+		if !ok {
+			return
+		}
+
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
+
+		chamaID, _, ok := activeChamaForRequest(db, r, memberID)
+		if !ok {
+			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
+			return
+		}
+
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, "Failed to check Chama role", http.StatusInternalServerError)
+			return
+		}
+
+		if !strings.EqualFold(role, "admin") && !strings.EqualFold(role, "treasurer") {
+			http.Error(w, "Only a Chama admin or treasurer can confirm a payout", http.StatusForbidden)
+			return
+		}
+
+		if err := CompleteCurrentCycle(db, chamaID); err != nil {
+			http.Error(w, "Could not complete cycle: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		http.Redirect(w, r, "/rotation", http.StatusSeeOther)
+	})
+
 	http.HandleFunc("/history", func(w http.ResponseWriter, r *http.Request) {
 		memberID, ok := dashboardMemberID(w, r, db)
 		if !ok {
 			return
 		}
+
 		chamaID, chamaName, ok := activeChamaForRequest(db, r, memberID)
 		if !ok {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+
 		role, err := GetMemberRoleInChama(db, chamaID, memberID)
 		if err != nil {
 			http.Error(w, "Failed to load Chama role", http.StatusInternalServerError)
@@ -183,12 +258,15 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 			FROM audit_events ae LEFT JOIN members m ON m.id=ae.member_id
 			WHERE ae.chama_id=?
 			ORDER BY 4 DESC`, chamaID, chamaID, chamaID, chamaID)
+
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
 				var e, user, details, at sql.NullString
 				if rows.Scan(&e, &user, &details, &at) == nil {
-					history = append(history, HistoryRow{e.String, user.String, details.String, at.String})
+					history = append(history, HistoryRow{
+						e.String, user.String, details.String, at.String,
+					})
 				}
 			}
 		}
@@ -207,11 +285,13 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		if !ok {
 			return
 		}
+
 		chamaID, chamaName, ok := activeChamaForRequest(db, r, memberID)
 		if !ok {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+
 		search := strings.TrimSpace(r.URL.Query().Get("q"))
 		rows := loadLedgerRows(db, chamaID, search)
 		tmpl := templateMust("ledger.html")
@@ -228,11 +308,13 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		if !ok {
 			return
 		}
+
 		chamaID, chamaName, ok := activeChamaForRequest(db, r, memberID)
 		if !ok {
-			http.Error(w, "Invalid Chama", 400)
+			http.Error(w, "Invalid Chama", http.StatusBadRequest)
 			return
 		}
+
 		pdf := makeLedgerPDF(chamaName, loadLedgerRows(db, chamaID, ""))
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", "attachment; filename=\"chama-statement.pdf\"")
@@ -244,18 +326,22 @@ func registerDashboardSubpageRoutes(db *sql.DB) {
 		if !ok {
 			return
 		}
+
 		chamaID, chamaName, ok := activeChamaForRequest(db, r, memberID)
 		if !ok {
 			http.Redirect(w, r, "/chama/my-chamas", http.StatusSeeOther)
 			return
 		}
+
 		var d RuleData
 		db.QueryRow(`SELECT contribution_amount, frequency, grace_period_days,
 			late_penalty_type, late_penalty_amount, approval_threshold,
 			welfare_reserve_amount, payout_method
 			FROM group_settings WHERE chama_id=? LIMIT 1`, chamaID).Scan(
 			&d.Amount, &d.Frequency, &d.GracePeriod, &d.PenaltyType,
-			&d.PenaltyAmount, &d.ApprovalThreshold, &d.WelfareReserve, &d.PayoutMethod)
+			&d.PenaltyAmount, &d.ApprovalThreshold, &d.WelfareReserve, &d.PayoutMethod,
+		)
+
 		tmpl := templateMust("rules.html")
 		tmpl.Execute(w, struct {
 			ChamaID   int64
@@ -272,6 +358,7 @@ func templateMust(name string) *template.Template {
 func loadLedgerRows(db *sql.DB, chamaID int64, search string) []LedgerRow {
 	var result []LedgerRow
 	like := "%" + search + "%"
+
 	rows, err := db.Query(`SELECT c.paid_on, m.name, 'Contribution', c.amount,
 		COALESCE(c.checkout_request_id, '-'), c.status
 		FROM contributions c JOIN members m ON m.id=c.member_id
@@ -285,6 +372,7 @@ func loadLedgerRows(db *sql.DB, chamaID int64, search string) []LedgerRow {
 		return result
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var x LedgerRow
 		if rows.Scan(&x.Date, &x.Member, &x.Type, &x.Amount, &x.Receipt, &x.Status) == nil {
@@ -294,6 +382,7 @@ func loadLedgerRows(db *sql.DB, chamaID int64, search string) []LedgerRow {
 			result = append(result, x)
 		}
 	}
+
 	return result
 }
 
@@ -303,57 +392,72 @@ func makeLedgerPDF(chamaName string, rows []LedgerRow) []byte {
 	lines = append(lines, chamaName)
 	lines = append(lines, "Date        Member                  Type          Amount       Receipt")
 	lines = append(lines, "--------------------------------------------------------------------------")
+
 	for _, r := range rows {
 		lines = append(lines, fmt.Sprintf("%-11s %-23s %-12s KES %-8.2f %s",
 			r.Date, truncatePDF(r.Member, 23), r.Type, r.Amount, truncatePDF(r.Receipt, 20)))
 	}
+
 	if len(lines) == 4 {
 		lines = append(lines, "No ledger entries found.")
 	}
 
 	var objects []string
-	add := func(s string) int { objects = append(objects, s); return len(objects) }
+	add := func(s string) int {
+		objects = append(objects, s)
+		return len(objects)
+	}
+
 	font := add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
 	var pageIDs []int
 	var contentIDs []int
+
 	for pageStart := 0; pageStart < len(lines); pageStart += 42 {
 		end := pageStart + 42
 		if end > len(lines) {
 			end = len(lines)
 		}
+
 		var stream strings.Builder
 		stream.WriteString("BT /F1 9 Tf 40 770 Td 12 TL\n")
 		for _, line := range lines[pageStart:end] {
 			stream.WriteString("(" + pdfEscape(line) + ") Tj T*\n")
 		}
 		stream.WriteString("ET")
+
 		content := add(fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(stream.String()), stream.String()))
 		contentIDs = append(contentIDs, content)
 		pageIDs = append(pageIDs, 0)
 	}
+
 	pages := add("<< /Type /Pages /Kids [] /Count 0 >>")
 	for i, contentID := range contentIDs {
 		pageIDs[i] = add(fmt.Sprintf("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>", pages, font, contentID))
 	}
+
 	kids := make([]string, len(pageIDs))
 	for i, id := range pageIDs {
 		kids[i] = fmt.Sprintf("%d 0 R", id)
 	}
 	objects[pages-1] = fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), len(kids))
+
 	catalog := add(fmt.Sprintf("<< /Type /Catalog /Pages %d 0 R >>", pages))
 
 	var out strings.Builder
 	out.WriteString("%PDF-1.4\n")
 	offsets := make([]int, len(objects)+1)
+
 	for i, obj := range objects {
 		offsets[i+1] = out.Len()
 		out.WriteString(fmt.Sprintf("%d 0 obj\n%s\nendobj\n", i+1, obj))
 	}
+
 	xref := out.Len()
 	out.WriteString(fmt.Sprintf("xref\n0 %d\n0000000000 65535 f \n", len(objects)+1))
 	for i := 1; i <= len(objects); i++ {
 		out.WriteString(fmt.Sprintf("%010d 00000 n \n", offsets[i]))
 	}
+
 	out.WriteString(fmt.Sprintf("trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF", len(objects)+1, catalog, xref))
 	return []byte(out.String())
 }

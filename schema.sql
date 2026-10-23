@@ -103,10 +103,11 @@ CREATE TABLE IF NOT EXISTS cycles (
     cycle_number INTEGER NOT NULL,
     due_date TEXT NOT NULL,
     recipient_member_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'pending',
+    completed_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chama_id) REFERENCES chamas(id)
 );
-
 CREATE TABLE IF NOT EXISTS chama_join_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chama_id INTEGER NOT NULL,

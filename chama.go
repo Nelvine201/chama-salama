@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -548,6 +549,160 @@ func GetOrCreateCurrentCycle(db *sql.DB, chamaID int64) (int64, int, string, err
 	}
 
 	return cycleID, cycleNumber, dueDate, nil
+}
+
+func CompleteCurrentCycle(db *sql.DB, chamaID int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var cycleID int64
+	var cycleNumber int
+	var dueDate string
+	var status string
+
+	err = tx.QueryRow(`
+		SELECT id, cycle_number, due_date, status
+		FROM cycles
+		WHERE chama_id = ?
+		ORDER BY cycle_number DESC
+		LIMIT 1
+	`, chamaID).Scan(&cycleID, &cycleNumber, &dueDate, &status)
+	if err != nil {
+		return err
+	}
+
+	if status == "completed" {
+		return fmt.Errorf("current cycle is already completed")
+	}
+
+	var currentRecipient sql.NullInt64
+	err = tx.QueryRow(`
+		SELECT recipient_member_id
+		FROM cycles
+		WHERE id = ?
+	`, cycleID).Scan(&currentRecipient)
+	if err != nil {
+		return err
+	}
+
+	rows, err := tx.Query(`
+		SELECT member_id
+		FROM chama_members
+		WHERE chama_id = ? AND status = 'active'
+		ORDER BY joined_at
+	`, chamaID)
+	if err != nil {
+		return err
+	}
+
+	var members []int64
+	for rows.Next() {
+		var memberID int64
+		if err := rows.Scan(&memberID); err != nil {
+			rows.Close()
+			return err
+		}
+		members = append(members, memberID)
+	}
+
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	if len(members) == 0 {
+		return fmt.Errorf("no active members in this chama")
+	}
+
+	currentIndex := -1
+	if currentRecipient.Valid {
+		for i, memberID := range members {
+			if memberID == currentRecipient.Int64 {
+				currentIndex = i
+				break
+			}
+		}
+	}
+
+	nextIndex := 0
+	if currentIndex >= 0 {
+		nextIndex = (currentIndex + 1) % len(members)
+	}
+
+	nextRecipientID := members[nextIndex]
+
+	var frequency string
+	err = tx.QueryRow(`
+		SELECT frequency
+		FROM group_settings
+		WHERE chama_id = ?
+		LIMIT 1
+	`, chamaID).Scan(&frequency)
+	if err != nil {
+		return err
+	}
+
+	nextDueDate, err := time.Parse("2006-01-02", dueDate)
+	if err != nil {
+		return err
+	}
+
+	switch strings.ToLower(frequency) {
+	case "weekly":
+		nextDueDate = nextDueDate.AddDate(0, 0, 7)
+	case "biweekly", "bi-weekly", "every two weeks":
+		nextDueDate = nextDueDate.AddDate(0, 0, 14)
+	case "monthly":
+		nextDueDate = nextDueDate.AddDate(0, 1, 0)
+	default:
+		return fmt.Errorf("unsupported payout frequency: %s", frequency)
+	}
+
+	result, err := tx.Exec(`
+    UPDATE cycles
+    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status = 'pending'
+`, cycleID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return fmt.Errorf("cycle was already completed or could not be updated")
+	}
+
+	result, err = tx.Exec(`
+		INSERT INTO cycles
+			(chama_id, cycle_number, due_date, recipient_member_id, status)
+		VALUES (?, ?, ?, ?, 'pending')
+	`, chamaID, cycleNumber+1, nextDueDate.Format("2006-01-02"), nextRecipientID)
+	if err != nil {
+		return err
+	}
+
+	if _, err := result.LastInsertId(); err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE group_settings
+		SET payout_position = ?
+		WHERE chama_id = ?
+	`, nextIndex, chamaID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func GetCycleSummary(db *sql.DB, chamaID int64) (*CycleSummary, error) {

@@ -66,6 +66,8 @@ func main() {
 		"ALTER TABLE chamas ADD COLUMN description TEXT",
 		"ALTER TABLE chamas ADD COLUMN start_date TEXT",
 		"ALTER TABLE chamas ADD COLUMN max_participants INTEGER",
+		"ALTER TABLE cycles ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
+		"ALTER TABLE cycles ADD COLUMN completed_at DATETIME",
 
 		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
 
@@ -134,7 +136,6 @@ func main() {
 		details TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`)
-
 
 	var chamaCount int
 	db.QueryRow("SELECT COUNT(*) FROM chamas").Scan(&chamaCount)
