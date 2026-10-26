@@ -47,9 +47,15 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to read schema.sql:", err)
 	}
-	_, err = db.Exec(string(schema))
-	if err != nil {
-		log.Fatal("Failed to apply schema:", err)
+	for _, stmt := range strings.Split(string(schema), ";") {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+
+		if _, err = db.Exec(stmt); err != nil {
+			log.Fatalf("Failed to apply schema statement:\n%s\nError: %v", stmt, err)
+		}
 	}
 	fmt.Println("Database schema ensured.")
 
