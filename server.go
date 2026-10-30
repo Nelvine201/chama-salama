@@ -300,37 +300,47 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to read callback")
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
 		}
+
 		defer r.Body.Close()
 
-		fmt.Println("Received Daraja callback:")
-		fmt.Println(string(body))
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read callback", http.StatusBadRequest)
+			return
+		}
 
 		var payload struct {
 			Body struct {
 				StkCallback struct {
 					CheckoutRequestID string `json:"CheckoutRequestID"`
-					ResultCode        int    `json:"ResultCode"`
+					ResultCode        *int   `json:"ResultCode"`
 				} `json:"stkCallback"`
 			} `json:"Body"`
 		}
 
 		if err := json.Unmarshal(body, &payload); err != nil {
-			fmt.Println("Failed to parse callback:", err)
-			fmt.Fprintln(w, "Callback received")
+			http.Error(w, "Invalid callback payload", http.StatusBadRequest)
 			return
 		}
 
-		checkoutID := payload.Body.StkCallback.CheckoutRequestID
-		success := payload.Body.StkCallback.ResultCode == 0
+		callback := payload.Body.StkCallback
+		if strings.TrimSpace(callback.CheckoutRequestID) == "" || callback.ResultCode == nil {
+			http.Error(w, "Missing callback fields", http.StatusBadRequest)
+			return
+		}
 
-		err = ConfirmSTKContribution(db, checkoutID, success)
-		if err != nil {
-			fmt.Println("Failed to update contribution:", err)
+		success := *callback.ResultCode == 0
+
+		if err := ConfirmSTKContribution(db, callback.CheckoutRequestID, success); err != nil {
+			// Keep transaction details out of the HTTP response.
+			fmt.Println("Failed to update Daraja contribution status:", err)
+			// Acknowledge the callback to avoid exposing internal details.
+			fmt.Fprintln(w, "Callback received")
+			return
 		}
 
 		fmt.Fprintln(w, "Callback received")
@@ -400,20 +410,34 @@ func startServer(db *sql.DB) {
 
 		chamaIDStr := r.FormValue("chama_id")
 		chamaID, err := strconv.ParseInt(chamaIDStr, 10, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid chama ID")
+		if err != nil || chamaID <= 0 {
+			http.Error(w, "Invalid chama ID", http.StatusBadRequest)
 			return
 		}
 
-		phone := r.FormValue("phone")
+		if _, err := GetMemberRoleInChama(db, chamaID, memberID); err != nil {
+			http.Error(w, "You must be an active member of this Chama to contribute", http.StatusForbidden)
+			return
+		}
+
+		phone := strings.TrimSpace(r.FormValue("phone"))
 		amountStr := r.FormValue("amount")
 		amount, err := strconv.Atoi(amountStr)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid amount")
+		if err != nil || amount <= 0 {
+			http.Error(w, "Amount must be a positive whole number", http.StatusBadRequest)
+			return
+		}
+
+		if !isValidKenyanPhone(phone) {
+			http.Error(w, "Enter a valid Kenyan phone number", http.StatusBadRequest)
 			return
 		}
 
 		consumerKey, consumerSecret := getDarajaCredentials()
+		if strings.TrimSpace(consumerKey) == "" || strings.TrimSpace(consumerSecret) == "" {
+			http.Error(w, "M-Pesa payment service is not configured", http.StatusServiceUnavailable)
+			return
+		}
 		token, err := getAccessToken(consumerKey, consumerSecret)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to get access token:", err)

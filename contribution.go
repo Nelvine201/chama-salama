@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 type Contribution struct {
@@ -32,7 +33,6 @@ func RecordContribution(db *sql.DB, memberID int64, amount float64, paidOn, sour
 	}
 
 	return id, nil
-
 }
 
 func RecordContributionOffline(db *sql.DB, memberID int64, amount float64, paidOn, source string) (int64, error) {
@@ -63,6 +63,7 @@ func RecordContributionOffline(db *sql.DB, memberID int64, amount float64, paidO
 
 	return contributionID, nil
 }
+
 func ProcessSyncQueue(db *sql.DB) (int, error) {
 	rows, err := db.Query("SELECT id, contribution_id FROM sync_queue WHERE sync_status = 'pending'")
 	if err != nil {
@@ -103,6 +104,7 @@ func ProcessSyncQueue(db *sql.DB) (int, error) {
 
 	return synced, nil
 }
+
 func GetGroupBalance(db *sql.DB) (float64, error) {
 	var total float64
 	err := db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE status = 'synced'").Scan(&total)
@@ -146,6 +148,7 @@ func GetRecentContributions(db *sql.DB, limit int) ([]ContributionWithMember, er
 
 	return results, nil
 }
+
 func RecordPendingSTKContribution(db *sql.DB, memberID, chamaID int64, amount float64, checkoutRequestID string) (int64, error) {
 	result, err := db.Exec(
 		"INSERT INTO contributions (member_id, chama_id, amount, paid_on, source, status, checkout_request_id) VALUES (?, ?, ?, DATE('now'), ?, ?, ?)",
@@ -158,10 +161,31 @@ func RecordPendingSTKContribution(db *sql.DB, memberID, chamaID int64, amount fl
 }
 
 func ConfirmSTKContribution(db *sql.DB, checkoutRequestID string, success bool) error {
+	if strings.TrimSpace(checkoutRequestID) == "" {
+		return fmt.Errorf("checkout request ID is required")
+	}
+
 	status := "failed"
 	if success {
 		status = "synced"
 	}
-	_, err := db.Exec("UPDATE contributions SET status = ? WHERE checkout_request_id = ?", status, checkoutRequestID)
-	return err
+
+	result, err := db.Exec(
+		"UPDATE contributions SET status = ? WHERE checkout_request_id = ? AND status = 'pending'",
+		status,
+		checkoutRequestID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("no pending contribution found for checkout request")
+	}
+
+	return nil
 }

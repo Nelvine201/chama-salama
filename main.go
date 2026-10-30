@@ -12,15 +12,8 @@ import (
 )
 
 func main() {
-	key, secret := getDarajaCredentials()
-	token, err := getAccessToken(key, secret)
-	if err != nil {
-		fmt.Println("Error getting access token:", err)
-	} else {
-		fmt.Println("Token:", token)
-	}
-
 	var db *sql.DB
+	var err error
 	tursoURL := os.Getenv("TURSO_DATABASE_URL")
 	tursoToken := os.Getenv("TURSO_AUTH_TOKEN")
 

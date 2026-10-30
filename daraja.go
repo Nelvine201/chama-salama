@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
-	"fmt"
 )
 
 const (
@@ -28,6 +29,37 @@ func getDarajaCredentials() (string, string) {
 	consumerSecret := os.Getenv("DARAJA_CONSUMER_SECRET")
 	return consumerKey, consumerSecret
 }
+
+func normalizeKenyanPhone(phone string) (string, bool) {
+	phone = strings.TrimSpace(phone)
+	phone = strings.TrimPrefix(phone, "+")
+
+	if strings.HasPrefix(phone, "0") {
+		phone = "254" + phone[1:]
+	}
+
+	if len(phone) != 12 || !strings.HasPrefix(phone, "254") {
+		return "", false
+	}
+
+	if phone[3] != '7' && phone[3] != '1' {
+		return "", false
+	}
+
+	for _, digit := range phone {
+		if digit < '0' || digit > '9' {
+			return "", false
+		}
+	}
+
+	return phone, true
+}
+
+func isValidKenyanPhone(phone string) bool {
+	_, ok := normalizeKenyanPhone(phone)
+	return ok
+}
+
 func getAccessToken(consumerKey, consumerSecret string) (string, error) {
 	url := "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
 
@@ -49,9 +81,12 @@ func getAccessToken(consumerKey, consumerSecret string) (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read Daraja OAuth response: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Daraja OAuth returned HTTP %d", resp.StatusCode)
+	}
 	var result struct {
 		AccessToken string `json:"access_token"`
 	}
@@ -63,15 +98,20 @@ func getAccessToken(consumerKey, consumerSecret string) (string, error) {
 
 	return result.AccessToken, nil
 }
+
 type StkResponse struct {
-	MerchantRequestID  string `json:"MerchantRequestID"`
-	CheckoutRequestID  string `json:"CheckoutRequestID"`
-	ResponseCode       string `json:"ResponseCode"`
+	MerchantRequestID   string `json:"MerchantRequestID"`
+	CheckoutRequestID   string `json:"CheckoutRequestID"`
+	ResponseCode        string `json:"ResponseCode"`
 	ResponseDescription string `json:"ResponseDescription"`
 }
 
 func sendStkPush(accessToken, phone string, amount int) (*StkResponse, error) {
 	password, timestamp := generateStkPassword()
+	phone, ok := normalizeKenyanPhone(phone)
+	if !ok {
+		return nil, fmt.Errorf("invalid Kenyan M-Pesa phone number")
+	}
 
 	payload := map[string]interface{}{
 		"BusinessShortCode": darajaShortcode,
@@ -109,25 +149,30 @@ func sendStkPush(accessToken, phone string, amount int) (*StkResponse, error) {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read Daraja STK response: %w", err)
 	}
 
-	fmt.Println("Raw STK response:", string(respBody))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("Daraja STK request returned HTTP %d", resp.StatusCode)
+	}
 
 	var result StkResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode Daraja STK response: %w", err)
 	}
 
-	if result.ResponseCode == "" {
+	if result.ResponseCode != "0" {
 		var errResp struct {
 			ErrorCode    string `json:"errorCode"`
 			ErrorMessage string `json:"errorMessage"`
 		}
-		json.Unmarshal(respBody, &errResp)
+		_ = json.Unmarshal(respBody, &errResp)
+
 		if errResp.ErrorMessage != "" {
 			return nil, fmt.Errorf("Daraja error [%s]: %s", errResp.ErrorCode, errResp.ErrorMessage)
 		}
+
+		return nil, fmt.Errorf("Daraja rejected STK push: %s", result.ResponseDescription)
 	}
 
 	return &result, nil
