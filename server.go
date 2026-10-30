@@ -305,6 +305,7 @@ func startServer(db *sql.DB) {
 			return
 		}
 
+		// Close the request body when the handler finishes.
 		defer r.Body.Close()
 
 		body, err := io.ReadAll(r.Body)
@@ -312,6 +313,9 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Failed to read callback", http.StatusBadRequest)
 			return
 		}
+
+		// ADDED 1: Confirm that a callback arrived and show its size.
+		fmt.Printf("Daraja callback received: body size=%d bytes\n", len(body))
 
 		var payload struct {
 			Body struct {
@@ -323,25 +327,36 @@ func startServer(db *sql.DB) {
 		}
 
 		if err := json.Unmarshal(body, &payload); err != nil {
+			// ADDED 2: Log JSON parsing errors.
+			fmt.Printf("Daraja callback JSON error: %v\n", err)
+
 			http.Error(w, "Invalid callback payload", http.StatusBadRequest)
 			return
 		}
 
 		callback := payload.Body.StkCallback
+
 		if strings.TrimSpace(callback.CheckoutRequestID) == "" || callback.ResultCode == nil {
+			// ADDED 3: Log missing callback fields.
+			fmt.Println("Daraja callback rejected: missing required fields")
+
 			http.Error(w, "Missing callback fields", http.StatusBadRequest)
 			return
 		}
 
 		success := *callback.ResultCode == 0
 
+		// ADDED 4: Show the result code (0 means success).
+		fmt.Printf("Daraja callback result code: %d\n", *callback.ResultCode)
+
 		if err := ConfirmSTKContribution(db, callback.CheckoutRequestID, success); err != nil {
-			// Keep transaction details out of the HTTP response.
 			fmt.Println("Failed to update Daraja contribution status:", err)
-			// Acknowledge the callback to avoid exposing internal details.
 			fmt.Fprintln(w, "Callback received")
 			return
 		}
+
+		// ADDED 5: Only reached when the database update succeeds.
+		fmt.Println("Daraja callback processed successfully")
 
 		fmt.Fprintln(w, "Callback received")
 	})
