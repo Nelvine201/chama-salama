@@ -265,7 +265,7 @@
 <div class="modal" id="paymentModal">
   <div class="modal-box">
     <h2>Pay Contribution</h2>
-    <form action="/contribute" method="POST">
+    <form action="/stk-push" method="POST">
       <input type="hidden" name="chama_id" value="{{.ActiveChamaID}}">
       <label>Amount (KES)</label>
       <input type="number" name="amount" value="{{.Cycle.TargetAmount}}" required>
