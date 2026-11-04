@@ -65,6 +65,7 @@ func main() {
 		"ALTER TABLE chamas ADD COLUMN description TEXT",
 		"ALTER TABLE chamas ADD COLUMN start_date TEXT",
 		"ALTER TABLE chamas ADD COLUMN max_participants INTEGER",
+		"ALTER TABLE chamas ADD COLUMN lifecycle_status TEXT NOT NULL DEFAULT 'active'",
 		"ALTER TABLE cycles ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
 		"ALTER TABLE cycles ADD COLUMN completed_at DATETIME",
 
@@ -102,6 +103,13 @@ func main() {
 		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			log.Fatal("Failed to add column:", err)
 		}
+	}
+	if _, err := db.Exec(`
+    UPDATE group_settings
+    SET payout_method = 'fixed_rotation'
+    WHERE payout_method IS NULL OR payout_method <> 'fixed_rotation'
+	`); err != nil {
+		log.Fatal("Failed to enforce fixed rotation:", err)
 	}
 	fmt.Println("Profile system columns ensured.")
 	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS chama_join_requests (

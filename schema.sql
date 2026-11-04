@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS chamas (
     start_date TEXT,
     max_participants INTEGER,
     created_by INTEGER NOT NULL,
+    lifecycle_status TEXT NOT NULL DEFAULT 'forming',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES members(id)
 );

@@ -169,19 +169,26 @@
                         </div>
 
                         <div>
-                            <label for="payout_method" class="mb-1 block text-sm font-medium text-gray-700">
-                                Payout Method
-                            </label>
-                            <select
-                                id="payout_method"
-                                name="payout_method"
-                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            >
-                                <option value="fixed_rotation">Fixed Rotation</option>
-                                <option value="random_lottery">Random Lottery</option>
-                                <option value="bidding">Bidding</option>
-                            </select>
-                        </div>
+                            <div>
+    <label for="payout_method" class="mb-1 block text-sm font-medium text-gray-700">
+        Payout Method
+    </label>
+
+    <div class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2.5 text-sm text-gray-700">
+        Fixed Rotation
+    </div>
+
+    <input
+        type="hidden"
+        id="payout_method"
+        name="payout_method"
+        value="fixed_rotation"
+    >
+
+    <p class="mt-1 text-xs text-gray-400">
+        Members receive payouts in an agreed, fixed order.
+    </p>
+</div>
 
                     </div>
                 </div>

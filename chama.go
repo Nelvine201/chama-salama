@@ -17,8 +17,10 @@ func CreateChama(db *sql.DB, name string, createdBy int64) (int64, error) {
 	if name == "" {
 		return 0, fmt.Errorf("chama name is required")
 	}
-
-	result, err := db.Exec("INSERT INTO chamas (name, created_by) VALUES (?, ?)", name, createdBy)
+	result, err := db.Exec(
+		"INSERT INTO chamas (name, created_by, lifecycle_status) VALUES (?, ?, 'forming')",
+		name, createdBy,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -82,11 +84,8 @@ func CreateChamaWithSettings(db *sql.DB, config ChamaConfig, createdBy int64) (i
 		config.Frequency != "monthly" {
 		return 0, fmt.Errorf("invalid contribution frequency")
 	}
-
-	if config.PayoutMethod != "fixed_rotation" &&
-		config.PayoutMethod != "random_lottery" &&
-		config.PayoutMethod != "bidding" {
-		return 0, fmt.Errorf("invalid payout method")
+	if config.PayoutMethod != "fixed_rotation" {
+		return 0, fmt.Errorf("only fixed rotation payout is supported")
 	}
 
 	if config.GracePeriodDays < 0 {
@@ -129,8 +128,8 @@ func CreateChamaWithSettings(db *sql.DB, config ChamaConfig, createdBy int64) (i
 
 	result, err := tx.Exec(
 		`INSERT INTO chamas
-			(name, description, start_date, max_participants, created_by)
-		 VALUES (?, ?, ?, ?, ?)`,
+        (name, description, start_date, max_participants, created_by, lifecycle_status)
+     VALUES (?, ?, ?, ?, ?, 'forming')`,
 		config.Name,
 		config.Description,
 		config.StartDate,
@@ -205,17 +204,20 @@ func CreateChamaWithSettings(db *sql.DB, config ChamaConfig, createdBy int64) (i
 }
 
 type ChamaMembership struct {
-	ChamaID   int64
-	ChamaName string
-	Role      string
+	ChamaID         int64
+	ChamaName       string
+	Role            string
+	LifecycleStatus string
+	MaxParticipants int
 }
 
 func GetMemberChamas(db *sql.DB, memberID int64) ([]ChamaMembership, error) {
 	rows, err := db.Query(
-		`SELECT c.id, c.name, cm.role
-		 FROM chama_members cm
-		 JOIN chamas c ON cm.chama_id = c.id
-		 WHERE cm.member_id = ? AND cm.status = 'active'`,
+		`SELECT c.id, c.name, cm.role, c.lifecycle_status,
+                COALESCE(c.max_participants, 0)
+         FROM chama_members cm
+         JOIN chamas c ON cm.chama_id = c.id
+         WHERE cm.member_id = ? AND cm.status = 'active'`,
 		memberID,
 	)
 	if err != nil {
@@ -226,12 +228,152 @@ func GetMemberChamas(db *sql.DB, memberID int64) ([]ChamaMembership, error) {
 	var memberships []ChamaMembership
 	for rows.Next() {
 		var m ChamaMembership
-		if err := rows.Scan(&m.ChamaID, &m.ChamaName, &m.Role); err != nil {
+		if err := rows.Scan(
+			&m.ChamaID,
+			&m.ChamaName,
+			&m.Role,
+			&m.LifecycleStatus,
+			&m.MaxParticipants,
+		); err != nil {
 			return nil, err
 		}
 		memberships = append(memberships, m)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return memberships, nil
+}
+
+type chamaActivationQuerier interface {
+	QueryRow(query string, args ...any) *sql.Row
+}
+
+func validateChamaActivation(q chamaActivationQuerier, chamaID int64) error {
+	var lifecycleStatus string
+	var maxParticipants int
+
+	err := q.QueryRow(`
+		SELECT lifecycle_status, max_participants
+		FROM chamas
+		WHERE id = ?
+	`, chamaID).Scan(&lifecycleStatus, &maxParticipants)
+	if err != nil {
+		return err
+	}
+
+	if lifecycleStatus != "forming" {
+		return fmt.Errorf("only a forming Chama can be activated")
+	}
+
+	var contributionAmount float64
+	var frequency string
+	var payoutMethod string
+	var numberOfRounds int
+
+	err = q.QueryRow(`
+		SELECT contribution_amount, frequency, payout_method, number_of_rounds
+		FROM group_settings
+		WHERE chama_id = ?
+		LIMIT 1
+	`, chamaID).Scan(
+		&contributionAmount,
+		&frequency,
+		&payoutMethod,
+		&numberOfRounds,
+	)
+	if err != nil {
+		return fmt.Errorf("Chama settings are incomplete: %w", err)
+	}
+
+	if contributionAmount <= 0 {
+		return fmt.Errorf("contribution amount must be greater than zero")
+	}
+
+	if frequency != "weekly" &&
+		frequency != "biweekly" &&
+		frequency != "monthly" {
+		return fmt.Errorf("invalid contribution frequency")
+	}
+
+	if payoutMethod != "fixed_rotation" {
+		return fmt.Errorf("Chama must use fixed rotation")
+	}
+
+	if numberOfRounds <= 0 {
+		return fmt.Errorf("number of rounds must be greater than zero")
+	}
+
+	if maxParticipants < 2 {
+		return fmt.Errorf("maximum participants must be at least 2")
+	}
+
+	var activeMembers int
+	err = q.QueryRow(`
+		SELECT COUNT(*)
+		FROM chama_members
+		WHERE chama_id = ? AND status = 'active'
+	`, chamaID).Scan(&activeMembers)
+	if err != nil {
+		return err
+	}
+
+	if activeMembers < 2 {
+		return fmt.Errorf("at least two active members are required")
+	}
+
+	if activeMembers > maxParticipants {
+		return fmt.Errorf("active membership exceeds the maximum participants")
+	}
+
+	return nil
+}
+
+func CanActivateChama(db *sql.DB, chamaID int64) error {
+	return validateChamaActivation(db, chamaID)
+}
+
+func ActivateChama(db *sql.DB, chamaID int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := validateChamaActivation(tx, chamaID); err != nil {
+		return err
+	}
+
+	result, err := tx.Exec(`
+		UPDATE chamas
+		SET lifecycle_status = 'active'
+		WHERE id = ? AND lifecycle_status = 'forming'
+	`, chamaID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return fmt.Errorf("Chama could not be activated")
+	}
+
+	return tx.Commit()
+}
+
+func GetChamaLifecycleStatus(db *sql.DB, chamaID int64) (string, error) {
+	var status string
+	err := db.QueryRow(
+		"SELECT lifecycle_status FROM chamas WHERE id = ?",
+		chamaID,
+	).Scan(&status)
+	return status, err
 }
 
 type RosterMember struct {
@@ -367,6 +509,8 @@ type ChamaCard struct {
 	ContributionAmount      float64
 	PendingInviteCount      int
 	PendingJoinRequestCount int
+	LifecycleStatus         string
+	MaxParticipants         int
 }
 
 func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
@@ -376,45 +520,108 @@ func GetMemberChamaCards(db *sql.DB, memberID int64) ([]ChamaCard, error) {
 	}
 
 	var cards []ChamaCard
+
 	for _, m := range memberships {
 		var c ChamaCard
+
 		c.ChamaID = m.ChamaID
 		c.ChamaName = m.ChamaName
 		c.Role = m.Role
+		c.LifecycleStatus = m.LifecycleStatus
+		c.MaxParticipants = m.MaxParticipants
 
-		db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", m.ChamaID).Scan(&c.MemberCount)
+		// Count active members.
+		err := db.QueryRow(
+			`SELECT COUNT(*)
+			 FROM chama_members
+			 WHERE chama_id = ? AND status = 'active'`,
+			m.ChamaID,
+		).Scan(&c.MemberCount)
+		if err != nil {
+			return nil, err
+		}
 
+		// Load contribution settings.
 		var amount float64
 		var position int
 		var nextDate sql.NullString
-		db.QueryRow("SELECT contribution_amount, payout_position, next_payout_date FROM group_settings WHERE chama_id = ? LIMIT 1", m.ChamaID).
-			Scan(&amount, &position, &nextDate)
+
+		settingsErr := db.QueryRow(
+			`SELECT contribution_amount, payout_position, next_payout_date
+			 FROM group_settings
+			 WHERE chama_id = ?
+			 LIMIT 1`,
+			m.ChamaID,
+		).Scan(&amount, &position, &nextDate)
+
+		if settingsErr != nil && settingsErr != sql.ErrNoRows {
+			return nil, settingsErr
+		}
+
 		c.ContributionAmount = amount
-		c.NextPayoutDate = nextDate.String
 
-		db.QueryRow(
-			`SELECT name FROM members WHERE id = (
-				SELECT member_id FROM chama_members WHERE chama_id = ? AND status = 'active' ORDER BY joined_at LIMIT 1 OFFSET ?
-			)`, m.ChamaID, position,
-		).Scan(&c.NextRecipientName)
+		// Payout and contribution information is only relevant
+		// after the Chama becomes active.
+		if strings.EqualFold(m.LifecycleStatus, "active") {
+			c.NextPayoutDate = nextDate.String
 
-		db.QueryRow(
-			`SELECT COUNT(*) + 1 FROM chama_members WHERE chama_id = ? AND status = 'active' AND joined_at < (
-				SELECT joined_at FROM chama_members WHERE chama_id = ? AND member_id = ?
-			)`, m.ChamaID, m.ChamaID, memberID,
-		).Scan(&c.QueuePosition)
+			db.QueryRow(
+				`SELECT name FROM members WHERE id = (
+					SELECT member_id
+					FROM chama_members
+					WHERE chama_id = ? AND status = 'active'
+					ORDER BY joined_at
+					LIMIT 1 OFFSET ?
+				)`,
+				m.ChamaID, position,
+			).Scan(&c.NextRecipientName)
 
-		var paidCount int
-		db.QueryRow("SELECT COUNT(*) FROM contributions WHERE chama_id = ? AND member_id = ? AND status = 'synced'", m.ChamaID, memberID).Scan(&paidCount)
-		c.ContributionPaid = paidCount > 0
+			db.QueryRow(
+				`SELECT COUNT(*) + 1
+				 FROM chama_members
+				 WHERE chama_id = ? AND status = 'active'
+				 AND joined_at < (
+					SELECT joined_at
+					FROM chama_members
+					WHERE chama_id = ? AND member_id = ?
+				 )`,
+				m.ChamaID, m.ChamaID, memberID,
+			).Scan(&c.QueuePosition)
 
+			var paidCount int
+
+			db.QueryRow(
+				`SELECT COUNT(*)
+				 FROM contributions
+				 WHERE chama_id = ?
+				 AND member_id = ?
+				 AND status = 'synced'`,
+				m.ChamaID, memberID,
+			).Scan(&paidCount)
+
+			c.ContributionPaid = paidCount > 0
+		}
+
+		// Load pending requests for administrators.
 		if m.Role == "admin" {
-			db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'pending'", m.ChamaID).Scan(&c.PendingInviteCount)
-			db.QueryRow("SELECT COUNT(*) FROM chama_join_requests WHERE chama_id = ? AND status = 'pending'", m.ChamaID).Scan(&c.PendingJoinRequestCount)
+			db.QueryRow(
+				`SELECT COUNT(*)
+				 FROM chama_members
+				 WHERE chama_id = ? AND status = 'pending'`,
+				m.ChamaID,
+			).Scan(&c.PendingInviteCount)
+
+			db.QueryRow(
+				`SELECT COUNT(*)
+				 FROM chama_join_requests
+				 WHERE chama_id = ? AND status = 'pending'`,
+				m.ChamaID,
+			).Scan(&c.PendingJoinRequestCount)
 		}
 
 		cards = append(cards, c)
 	}
+
 	return cards, nil
 }
 
@@ -492,6 +699,15 @@ func GetOrCreateCurrentCycle(db *sql.DB, chamaID int64) (int64, int, string, err
 	var cycleNumber int
 	var dueDate string
 
+	lifecycleStatus, statusErr := GetChamaLifecycleStatus(db, chamaID)
+	if statusErr != nil {
+		return 0, 0, "", statusErr
+	}
+
+	if !strings.EqualFold(lifecycleStatus, "active") {
+		return 0, 0, "", fmt.Errorf("Chama must be active before a cycle can begin")
+	}
+
 	err := db.QueryRow(
 		"SELECT id, cycle_number, due_date FROM cycles WHERE chama_id = ? ORDER BY cycle_number DESC LIMIT 1",
 		chamaID,
@@ -557,6 +773,20 @@ func CompleteCurrentCycle(db *sql.DB, chamaID int64) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	var lifecycleStatus string
+
+	err = tx.QueryRow(
+		"SELECT lifecycle_status FROM chamas WHERE id = ?",
+		chamaID,
+	).Scan(&lifecycleStatus)
+	if err != nil {
+		return err
+	}
+
+	if !strings.EqualFold(lifecycleStatus, "active") {
+		return fmt.Errorf("cannot advance rotation before the Chama is active")
+	}
 
 	var cycleID int64
 	var cycleNumber int

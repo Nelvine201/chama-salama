@@ -112,6 +112,54 @@ func startServer(db *sql.DB) {
 		})
 		http.Redirect(w, r, "/login-page", http.StatusSeeOther)
 	})
+
+	http.HandleFunc("/chama/activate", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		if err := requireSameOrigin(r); err != nil {
+			http.Error(w, "Invalid request origin", http.StatusForbidden)
+			return
+		}
+
+		memberID, err := getLoggedInMemberID(r, db)
+		if err != nil {
+			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
+			return
+		}
+
+		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
+		if err != nil || chamaID <= 0 {
+			http.Error(w, "Invalid Chama ID", http.StatusBadRequest)
+			return
+		}
+
+		role, err := GetMemberRoleInChama(db, chamaID, memberID)
+		if err != nil {
+			http.Error(w, "You are not a member of this Chama", http.StatusForbidden)
+			return
+		}
+
+		if !strings.EqualFold(role, "admin") {
+			http.Error(w, "Only a Chama admin can activate it", http.StatusForbidden)
+			return
+		}
+
+		if err := ActivateChama(db, chamaID); err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+
+		http.Redirect(
+			w,
+			r,
+			"/chama/dashboard?chama_id="+strconv.FormatInt(chamaID, 10),
+			http.StatusSeeOther,
+		)
+	})
+
 	http.HandleFunc("/profile-page", func(w http.ResponseWriter, r *http.Request) {
 		memberID, err := getLoggedInMemberID(r, db)
 		if err != nil {
@@ -229,76 +277,27 @@ func startServer(db *sql.DB) {
 	})
 
 	http.HandleFunc("/contribute", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			fmt.Fprintln(w, "Please submit this form using POST")
-			return
-		}
-
-		memberID, err := getLoggedInMemberID(r, db)
-		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
-			return
-		}
-
-		amountStr := r.FormValue("amount")
-		amount, err := strconv.ParseFloat(amountStr, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid amount")
-			return
-		}
-
-		paidOn := r.FormValue("paid_on")
-		source := r.FormValue("source")
-
-		_, err = RecordContribution(db, memberID, amount, paidOn, source)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to record contribution:", err)
-			return
-		}
-
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		http.Error(
+			w,
+			"Direct contribution recording is disabled. Use the Chama M-Pesa payment flow.",
+			http.StatusGone,
+		)
 	})
 	http.HandleFunc("/contribute-offline", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			fmt.Fprintln(w, "Please submit this form using POST")
-			return
-		}
-
-		memberIDStr := r.FormValue("member_id")
-		memberID, err := strconv.ParseInt(memberIDStr, 10, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid member ID")
-			return
-		}
-
-		amountStr := r.FormValue("amount")
-		amount, err := strconv.ParseFloat(amountStr, 64)
-		if err != nil {
-			fmt.Fprintln(w, "Invalid amount")
-			return
-		}
-
-		paidOn := r.FormValue("paid_on")
-		source := r.FormValue("source")
-
-		id, err := RecordContributionOffline(db, memberID, amount, paidOn, source)
-		if err != nil {
-			fmt.Fprintln(w, "Failed to record contribution:", err)
-			return
-		}
-
-		fmt.Fprintln(w, "Contribution saved offline (pending sync). ID:", id)
+		http.Error(
+			w,
+			"Offline contribution recording is currently unavailable.",
+			http.StatusGone,
+		)
 	})
 
 	http.HandleFunc("/sync", func(w http.ResponseWriter, r *http.Request) {
-		count, err := ProcessSyncQueue(db)
-		if err != nil {
-			fmt.Fprintln(w, "Sync failed:", err)
-			return
-		}
-		fmt.Fprintln(w, "Sync complete. Contributions synced:", count)
+		http.Error(
+			w,
+			"Contribution syncing is disabled until payment verification is implemented.",
+			http.StatusGone,
+		)
 	})
-
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -387,6 +386,16 @@ func startServer(db *sql.DB) {
 			http.Error(w, "Active Chama membership required", http.StatusForbidden)
 			return
 		}
+		lifecycleStatus, err := GetChamaLifecycleStatus(db, chamaID)
+		if err != nil {
+			http.Error(w, "Could not verify Chama status", http.StatusInternalServerError)
+			return
+		}
+
+		if !strings.EqualFold(lifecycleStatus, "active") {
+			http.Error(w, "Cannot simulate payments for a Chama that is still forming", http.StatusConflict)
+			return
+		}
 
 		amount, err := strconv.ParseFloat(r.FormValue("amount"), 64)
 		if err != nil || amount <= 0 {
@@ -434,6 +443,25 @@ func startServer(db *sql.DB) {
 			http.Error(w, "You must be an active member of this Chama to contribute", http.StatusForbidden)
 			return
 		}
+		lifecycleStatus, err := GetChamaLifecycleStatus(db, chamaID)
+		if err != nil {
+			http.Error(w, "Could not verify Chama status", http.StatusInternalServerError)
+			return
+		}
+
+		if !strings.EqualFold(lifecycleStatus, "active") {
+			http.Error(
+				w,
+				"This Chama is still forming. Contributions will be enabled after activation.",
+				http.StatusConflict,
+			)
+			return
+		}
+		cycleID, _, _, err := GetOrCreateCurrentCycle(db, chamaID)
+		if err != nil {
+			http.Error(w, "Could not prepare the current contribution cycle", http.StatusInternalServerError)
+			return
+		}
 
 		phone := strings.TrimSpace(r.FormValue("phone"))
 		amountStr := r.FormValue("amount")
@@ -469,8 +497,14 @@ func startServer(db *sql.DB) {
 			fmt.Fprintln(w, "STK push rejected:", stkResp.ResponseDescription)
 			return
 		}
-
-		_, err = RecordPendingSTKContribution(db, memberID, chamaID, float64(amount), stkResp.CheckoutRequestID)
+		_, err = RecordPendingSTKContribution(
+			db,
+			memberID,
+			chamaID,
+			cycleID,
+			float64(amount),
+			stkResp.CheckoutRequestID,
+		)
 		if err != nil {
 			fmt.Fprintln(w, "Failed to save pending contribution:", err)
 			return
