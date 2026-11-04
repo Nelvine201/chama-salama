@@ -847,21 +847,88 @@ func CompleteCurrentCycle(db *sql.DB, chamaID int64) error {
 	if len(members) == 0 {
 		return fmt.Errorf("no active members in this chama")
 	}
+	// Load the required contribution amount for each member.
+	var contributionAmount float64
+	err = tx.QueryRow(`
+	SELECT contribution_amount
+	FROM group_settings
+	WHERE chama_id = ?
+	LIMIT 1
+`, chamaID).Scan(&contributionAmount)
+	if err != nil {
+		return err
+	}
+
+	if contributionAmount <= 0 {
+		return fmt.Errorf("invalid contribution amount configured")
+	}
+
+	// Every active member must have fully paid their contribution.
+	var underfundedMembers int
+	err = tx.QueryRow(`
+	SELECT COUNT(*)
+	FROM chama_members cm
+	WHERE cm.chama_id = ?
+	  AND cm.status = 'active'
+	  AND COALESCE((
+		SELECT SUM(c.amount)
+		FROM contributions c
+		WHERE c.chama_id = cm.chama_id
+		  AND c.member_id = cm.member_id
+		  AND c.cycle_id = ?
+		  AND c.status = 'synced'
+	  ), 0) < ?
+`, chamaID, cycleID, contributionAmount).Scan(&underfundedMembers)
+	if err != nil {
+		return err
+	}
+
+	if underfundedMembers > 0 {
+		return fmt.Errorf(
+			"cannot complete cycle: %d active member(s) have not fully contributed",
+			underfundedMembers,
+		)
+	}
+
+	// Verify the complete expected pool has been collected.
+	var totalCollected float64
+	err = tx.QueryRow(`
+	SELECT COALESCE(SUM(amount), 0)
+	FROM contributions
+	WHERE chama_id = ?
+	  AND cycle_id = ?
+	  AND status = 'synced'
+`, chamaID, cycleID).Scan(&totalCollected)
+	if err != nil {
+		return err
+	}
+
+	expectedPool := contributionAmount * float64(len(members))
+	if totalCollected < expectedPool {
+		return fmt.Errorf(
+			"cannot complete cycle: collected %.2f of expected %.2f",
+			totalCollected,
+			expectedPool,
+		)
+	}
+
+	if !currentRecipient.Valid {
+		return fmt.Errorf("current cycle has no assigned payout recipient")
+	}
 
 	currentIndex := -1
-	if currentRecipient.Valid {
-		for i, memberID := range members {
-			if memberID == currentRecipient.Int64 {
-				currentIndex = i
-				break
-			}
+	for i, memberID := range members {
+		if memberID == currentRecipient.Int64 {
+			currentIndex = i
+			break
 		}
 	}
 
-	nextIndex := 0
-	if currentIndex >= 0 {
-		nextIndex = (currentIndex + 1) % len(members)
+	if currentIndex == -1 {
+		return fmt.Errorf("current payout recipient is not an active Chama member")
 	}
+
+	nextIndex := (currentIndex + 1) % len(members)
 
 	nextRecipientID := members[nextIndex]
 
