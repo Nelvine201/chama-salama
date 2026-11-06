@@ -412,32 +412,112 @@ func InviteMember(db *sql.DB, chamaID int64, identifier, role string) error {
 		return fmt.Errorf("no registered member found with that phone or email")
 	}
 
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var lifecycleStatus string
+	var maxParticipants int
+	err = tx.QueryRow(`
+		SELECT lifecycle_status, COALESCE(max_participants, 0)
+		FROM chamas
+		WHERE id = ?
+	`, chamaID).Scan(&lifecycleStatus, &maxParticipants)
+	if err != nil {
+		return fmt.Errorf("chama not found")
+	}
+
+	if lifecycleStatus != "forming" {
+		return fmt.Errorf("this chama is no longer accepting new members")
+	}
+
 	var existing int
-	db.QueryRow(
-		"SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND member_id = ?",
-		chamaID, member.ID,
-	).Scan(&existing)
+	err = tx.QueryRow(`
+		SELECT COUNT(*)
+		FROM chama_members
+		WHERE chama_id = ? AND member_id = ?
+	`, chamaID, member.ID).Scan(&existing)
+	if err != nil {
+		return err
+	}
 	if existing > 0 {
 		return fmt.Errorf("this member already has a membership or pending invite for this chama")
 	}
 
-	_, err = db.Exec(
-		"INSERT INTO chama_members (chama_id, member_id, role, status) VALUES (?, ?, ?, ?)",
-		chamaID, member.ID, role, "pending",
-	)
-	return err
+	var activeAndPending int
+	err = tx.QueryRow(`
+		SELECT COUNT(*)
+		FROM chama_members
+		WHERE chama_id = ? AND status IN ('active', 'pending')
+	`, chamaID).Scan(&activeAndPending)
+	if err != nil {
+		return err
+	}
+	if maxParticipants > 0 && activeAndPending >= maxParticipants {
+		return fmt.Errorf("this chama has no available membership slots")
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO chama_members (chama_id, member_id, role, status)
+		VALUES (?, ?, ?, 'pending')
+	`, chamaID, member.ID, role)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func RespondToInvitation(db *sql.DB, chamaID, memberID int64, accept bool) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var lifecycleStatus string
+	var maxParticipants int
+	err = tx.QueryRow(`
+		SELECT lifecycle_status, COALESCE(max_participants, 0)
+		FROM chamas
+		WHERE id = ?
+	`, chamaID).Scan(&lifecycleStatus, &maxParticipants)
+	if err != nil {
+		return fmt.Errorf("chama not found")
+	}
+
+	if accept {
+		if lifecycleStatus != "forming" {
+			return fmt.Errorf("this chama is no longer accepting new members")
+		}
+
+		var activeAndPending int
+		err = tx.QueryRow(`
+			SELECT COUNT(*)
+			FROM chama_members
+			WHERE chama_id = ? AND status IN ('active', 'pending')
+		`, chamaID).Scan(&activeAndPending)
+		if err != nil {
+			return err
+		}
+
+		if maxParticipants > 0 && activeAndPending > maxParticipants {
+			return fmt.Errorf("this chama has no available membership slots")
+		}
+	}
+
 	status := "declined"
 	if accept {
 		status = "active"
 	}
 
-	result, err := db.Exec(
-		"UPDATE chama_members SET status = ? WHERE chama_id = ? AND member_id = ? AND status = 'pending'",
-		status, chamaID, memberID,
-	)
+	result, err := tx.Exec(`
+		UPDATE chama_members
+		SET status = ?
+		WHERE chama_id = ? AND member_id = ? AND status = 'pending'
+	`, status, chamaID, memberID)
 	if err != nil {
 		return err
 	}
@@ -449,7 +529,8 @@ func RespondToInvitation(db *sql.DB, chamaID, memberID int64, accept bool) error
 	if rows == 0 {
 		return fmt.Errorf("no pending invitation found")
 	}
-	return nil
+
+	return tx.Commit()
 }
 
 type PendingInvitation struct {
