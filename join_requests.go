@@ -1,42 +1,42 @@
 package main
 
 import (
-    "database/sql"
-    "fmt"
+	"database/sql"
+	"fmt"
 )
 
 type PublicChama struct {
-    ID                 int64
-    Name               string
-    Description        string
-    Status             string
-    ContributionAmount float64
-    Frequency          string
-    ActiveMembers      int
-    MaxParticipants    int
-    NumberOfRounds     int
-    PayoutMethod       string
-    GracePeriodDays    int
-    LatePenaltyType    string
-    LatePenaltyAmount  float64
-    WelfareReserve     float64
-    ApprovalThreshold  int
+	ID                 int64
+	Name               string
+	Description        string
+	Status             string
+	ContributionAmount float64
+	Frequency          string
+	ActiveMembers      int
+	MaxParticipants    int
+	NumberOfRounds     int
+	PayoutMethod       string
+	GracePeriodDays    int
+	LatePenaltyType    string
+	LatePenaltyAmount  float64
+	WelfareReserve     float64
+	ApprovalThreshold  int
 }
 
 type JoinRequest struct {
-    ID          int64
-    ChamaID     int64
-    ChamaName   string
-    MemberID    int64
-    ApplicantName string
-    Phone       string
-    Note        string
-    Status      string
-    CreatedAt   string
+	ID            int64
+	ChamaID       int64
+	ChamaName     string
+	MemberID      int64
+	ApplicantName string
+	Phone         string
+	Note          string
+	Status        string
+	CreatedAt     string
 }
 
 func GetPublicChamas(db *sql.DB) ([]PublicChama, error) {
-    rows, err := db.Query(`
+	rows, err := db.Query(`
         SELECT c.id, c.name, COALESCE(c.description, ''), 'Open',
                COALESCE(gs.contribution_amount, 0), COALESCE(gs.frequency, ''),
                COUNT(CASE WHEN cm.status = 'active' THEN 1 END),
@@ -53,86 +53,114 @@ func GetPublicChamas(db *sql.DB) ([]PublicChama, error) {
                  gs.welfare_reserve_amount, gs.approval_threshold
         ORDER BY c.created_at DESC
     `)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    var result []PublicChama
-    for rows.Next() {
-        var c PublicChama
-        if err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.Status,
-            &c.ContributionAmount, &c.Frequency, &c.ActiveMembers, &c.MaxParticipants,
-            &c.NumberOfRounds, &c.PayoutMethod, &c.GracePeriodDays, &c.LatePenaltyType,
-            &c.LatePenaltyAmount, &c.WelfareReserve, &c.ApprovalThreshold); err != nil {
-            return nil, err
-        }
-        if c.MaxParticipants > 0 && c.ActiveMembers >= c.MaxParticipants {
-            c.Status = "Full"
-        }
-        result = append(result, c)
-    }
-    return result, rows.Err()
+	var result []PublicChama
+	for rows.Next() {
+		var c PublicChama
+		if err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.Status,
+			&c.ContributionAmount, &c.Frequency, &c.ActiveMembers, &c.MaxParticipants,
+			&c.NumberOfRounds, &c.PayoutMethod, &c.GracePeriodDays, &c.LatePenaltyType,
+			&c.LatePenaltyAmount, &c.WelfareReserve, &c.ApprovalThreshold); err != nil {
+			return nil, err
+		}
+		if c.MaxParticipants > 0 && c.ActiveMembers >= c.MaxParticipants {
+			c.Status = "Full"
+		}
+		result = append(result, c)
+	}
+	return result, rows.Err()
 }
 
 func GetPublicChama(db *sql.DB, chamaID int64) (*PublicChama, error) {
-    chamas, err := GetPublicChamas(db)
-    if err != nil {
-        return nil, err
-    }
-    for _, c := range chamas {
-        if c.ID == chamaID {
-            return &c, nil
-        }
-    }
-    return nil, fmt.Errorf("chama not found")
+	chamas, err := GetPublicChamas(db)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range chamas {
+		if c.ID == chamaID {
+			return &c, nil
+		}
+	}
+	return nil, fmt.Errorf("chama not found")
 }
 
 func CreateJoinRequest(db *sql.DB, chamaID, memberID int64, phone, note string, agreed bool) error {
-    if phone == "" {
-        return fmt.Errorf("phone number is required")
-    }
-    if !agreed {
-        return fmt.Errorf("you must agree to the group rules")
-    }
+	if phone == "" {
+		return fmt.Errorf("phone number is required")
+	}
+	if !agreed {
+		return fmt.Errorf("you must agree to the group rules")
+	}
 
-    var maxParticipants, activeMembers int
-    err := db.QueryRow("SELECT COALESCE(max_participants, 0) FROM chamas WHERE id = ?", chamaID).Scan(&maxParticipants)
-    if err != nil {
-        return fmt.Errorf("chama not found")
-    }
-    db.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", chamaID).Scan(&activeMembers)
-    if maxParticipants > 0 && activeMembers >= maxParticipants {
-        return fmt.Errorf("this chama is full")
-    }
+	var lifecycleStatus string
+	var maxParticipants int
+	err := db.QueryRow(`
+		SELECT lifecycle_status, COALESCE(max_participants, 0)
+		FROM chamas
+		WHERE id = ?
+	`, chamaID).Scan(&lifecycleStatus, &maxParticipants)
+	if err != nil {
+		return fmt.Errorf("chama not found")
+	}
+	if lifecycleStatus != "forming" {
+		return fmt.Errorf("this chama is no longer accepting new members")
+	}
 
-    var existingStatus string
-    err = db.QueryRow("SELECT status FROM chama_members WHERE chama_id = ? AND member_id = ?", chamaID, memberID).Scan(&existingStatus)
-    if err == nil {
-        if existingStatus == "active" {
-            return fmt.Errorf("you are already a member of this chama")
-        }
-        if existingStatus == "pending" {
-            return fmt.Errorf("you already have a pending membership")
-        }
-    } else if err != sql.ErrNoRows {
-        return err
-    }
+	var activeAndPending int
+	err = db.QueryRow(`
+		SELECT COUNT(*)
+		FROM chama_members
+		WHERE chama_id = ? AND status IN ('active', 'pending')
+	`, chamaID).Scan(&activeAndPending)
+	if err != nil {
+		return err
+	}
+	if maxParticipants > 0 && activeAndPending >= maxParticipants {
+		return fmt.Errorf("this chama has no available membership slots")
+	}
 
-    var requestStatus string
-    err = db.QueryRow("SELECT status FROM chama_join_requests WHERE chama_id = ? AND member_id = ? ORDER BY id DESC LIMIT 1", chamaID, memberID).Scan(&requestStatus)
-    if err == nil && requestStatus == "pending" {
-        return fmt.Errorf("you already have a pending join request")
-    }
+	var existingStatus string
+	err = db.QueryRow(`
+		SELECT status FROM chama_members
+		WHERE chama_id = ? AND member_id = ?
+	`, chamaID, memberID).Scan(&existingStatus)
+	if err == nil {
+		if existingStatus == "active" {
+			return fmt.Errorf("you are already a member of this chama")
+		}
+		if existingStatus == "pending" {
+			return fmt.Errorf("you already have a pending membership")
+		}
+	} else if err != sql.ErrNoRows {
+		return err
+	}
 
-    _, err = db.Exec(`INSERT INTO chama_join_requests
-        (chama_id, member_id, phone, note, agreed_to_rules, status)
-        VALUES (?, ?, ?, ?, 1, 'pending')`, chamaID, memberID, phone, note)
-    return err
+	var requestStatus string
+	err = db.QueryRow(`
+		SELECT status FROM chama_join_requests
+		WHERE chama_id = ? AND member_id = ?
+		ORDER BY id DESC LIMIT 1
+	`, chamaID, memberID).Scan(&requestStatus)
+	if err == nil && requestStatus == "pending" {
+		return fmt.Errorf("you already have a pending join request")
+	} else if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO chama_join_requests
+			(chama_id, member_id, phone, note, agreed_to_rules, status)
+		VALUES (?, ?, ?, ?, 1, 'pending')
+	`, chamaID, memberID, phone, note)
+	return err
 }
 
 func GetMyJoinRequests(db *sql.DB, memberID int64) ([]JoinRequest, error) {
-    rows, err := db.Query(`
+	rows, err := db.Query(`
         SELECT jr.id, jr.chama_id, c.name, jr.member_id, m.name,
                jr.phone, COALESCE(jr.note, ''), jr.status, jr.created_at
         FROM chama_join_requests jr
@@ -140,24 +168,24 @@ func GetMyJoinRequests(db *sql.DB, memberID int64) ([]JoinRequest, error) {
         JOIN members m ON m.id = jr.member_id
         WHERE jr.member_id = ?
         ORDER BY jr.id DESC`, memberID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-    var requests []JoinRequest
-    for rows.Next() {
-        var j JoinRequest
-        if err := rows.Scan(&j.ID, &j.ChamaID, &j.ChamaName, &j.MemberID,
-            &j.ApplicantName, &j.Phone, &j.Note, &j.Status, &j.CreatedAt); err != nil {
-            return nil, err
-        }
-        requests = append(requests, j)
-    }
-    return requests, rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var requests []JoinRequest
+	for rows.Next() {
+		var j JoinRequest
+		if err := rows.Scan(&j.ID, &j.ChamaID, &j.ChamaName, &j.MemberID,
+			&j.ApplicantName, &j.Phone, &j.Note, &j.Status, &j.CreatedAt); err != nil {
+			return nil, err
+		}
+		requests = append(requests, j)
+	}
+	return requests, rows.Err()
 }
 
 func GetAdminJoinRequests(db *sql.DB, chamaID int64) ([]JoinRequest, error) {
-    rows, err := db.Query(`
+	rows, err := db.Query(`
         SELECT jr.id, jr.chama_id, c.name, jr.member_id, m.name,
                jr.phone, COALESCE(jr.note, ''), jr.status, jr.created_at
         FROM chama_join_requests jr
@@ -165,78 +193,98 @@ func GetAdminJoinRequests(db *sql.DB, chamaID int64) ([]JoinRequest, error) {
         JOIN members m ON m.id = jr.member_id
         WHERE jr.chama_id = ? AND jr.status = 'pending'
         ORDER BY jr.id ASC`, chamaID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-    var requests []JoinRequest
-    for rows.Next() {
-        var j JoinRequest
-        if err := rows.Scan(&j.ID, &j.ChamaID, &j.ChamaName, &j.MemberID,
-            &j.ApplicantName, &j.Phone, &j.Note, &j.Status, &j.CreatedAt); err != nil {
-            return nil, err
-        }
-        requests = append(requests, j)
-    }
-    return requests, rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var requests []JoinRequest
+	for rows.Next() {
+		var j JoinRequest
+		if err := rows.Scan(&j.ID, &j.ChamaID, &j.ChamaName, &j.MemberID,
+			&j.ApplicantName, &j.Phone, &j.Note, &j.Status, &j.CreatedAt); err != nil {
+			return nil, err
+		}
+		requests = append(requests, j)
+	}
+	return requests, rows.Err()
 }
 
 func ReviewJoinRequest(db *sql.DB, requestID, reviewerID int64, approve bool) error {
-    tx, err := db.Begin()
-    if err != nil {
-        return err
-    }
-    defer tx.Rollback()
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-    var chamaID, applicantID int64
-    var status string
-    err = tx.QueryRow("SELECT chama_id, member_id, status FROM chama_join_requests WHERE id = ?", requestID).
-        Scan(&chamaID, &applicantID, &status)
-    if err != nil {
-        return err
-    }
-    if status != "pending" {
-        return fmt.Errorf("join request is no longer pending")
-    }
+	var chamaID, applicantID int64
+	var status string
+	err = tx.QueryRow("SELECT chama_id, member_id, status FROM chama_join_requests WHERE id = ?", requestID).
+		Scan(&chamaID, &applicantID, &status)
+	if err != nil {
+		return err
+	}
+	if status != "pending" {
+		return fmt.Errorf("join request is no longer pending")
+	}
 
-    var role string
-    err = tx.QueryRow("SELECT role FROM chama_members WHERE chama_id = ? AND member_id = ? AND status = 'active'", chamaID, reviewerID).Scan(&role)
-    if err != nil || role != "admin" {
-        return fmt.Errorf("only the chama admin can review join requests")
-    }
+	var role string
+	err = tx.QueryRow("SELECT role FROM chama_members WHERE chama_id = ? AND member_id = ? AND status = 'active'", chamaID, reviewerID).Scan(&role)
+	if err != nil || role != "admin" {
+		return fmt.Errorf("only the chama admin can review join requests")
+	}
 
-    newStatus := "declined"
-    title := "Chama join request declined"
-    message := "Your request to join the chama was declined."
-    if approve {
-        var maxParticipants, activeMembers int
-        tx.QueryRow("SELECT COALESCE(max_participants, 0) FROM chamas WHERE id = ?", chamaID).Scan(&maxParticipants)
-        tx.QueryRow("SELECT COUNT(*) FROM chama_members WHERE chama_id = ? AND status = 'active'", chamaID).Scan(&activeMembers)
-        if maxParticipants > 0 && activeMembers >= maxParticipants {
-            return fmt.Errorf("the chama is now full")
-        }
-        newStatus = "approved"
-        title = "You have been approved"
-        message = "Your request to join the chama has been approved."
-        _, err = tx.Exec(`INSERT INTO chama_members (chama_id, member_id, role, status)
+	newStatus := "declined"
+	title := "Chama join request declined"
+	message := "Your request to join the chama was declined."
+	if approve {
+		var lifecycleStatus string
+		var maxParticipants int
+		err = tx.QueryRow(`
+		SELECT lifecycle_status, COALESCE(max_participants, 0)
+		FROM chamas
+		WHERE id = ?
+	`, chamaID).Scan(&lifecycleStatus, &maxParticipants)
+		if err != nil {
+			return err
+		}
+		if lifecycleStatus != "forming" {
+			return fmt.Errorf("this chama is no longer accepting new members")
+		}
+
+		var activeMembers int
+		err = tx.QueryRow(`
+		SELECT COUNT(*)
+		FROM chama_members
+		WHERE chama_id = ? AND status = 'active'
+	`, chamaID).Scan(&activeMembers)
+		if err != nil {
+			return err
+		}
+		if maxParticipants > 0 && activeMembers >= maxParticipants {
+			return fmt.Errorf("the chama is now full")
+		}
+		newStatus = "approved"
+		title = "You have been approved"
+		message = "Your request to join the chama has been approved."
+		_, err = tx.Exec(`INSERT INTO chama_members (chama_id, member_id, role, status)
             VALUES (?, ?, 'member', 'active')`, chamaID, applicantID)
-        if err != nil {
-            return err
-        }
-    }
+		if err != nil {
+			return err
+		}
+	}
 
-    _, err = tx.Exec(`UPDATE chama_join_requests
+	_, err = tx.Exec(`UPDATE chama_join_requests
         SET status = ?, reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ?
         WHERE id = ? AND status = 'pending'`, newStatus, reviewerID, requestID)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    _, err = tx.Exec("INSERT INTO notifications (member_id, title, message, type) VALUES (?, ?, ?, 'join_request')",
-        applicantID, title, message)
-    if err != nil {
-        return err
-    }
+	_, err = tx.Exec("INSERT INTO notifications (member_id, title, message, type) VALUES (?, ?, ?, 'join_request')",
+		applicantID, title, message)
+	if err != nil {
+		return err
+	}
 
-    return tx.Commit()
+	return tx.Commit()
 }
