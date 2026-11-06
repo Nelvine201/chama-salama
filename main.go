@@ -74,6 +74,8 @@ func main() {
 		"ALTER TABLE contributions ADD COLUMN chama_id INTEGER",
 		"ALTER TABLE contributions ADD COLUMN checkout_request_id TEXT",
 		"ALTER TABLE contributions ADD COLUMN cycle_id INTEGER",
+		"ALTER TABLE contributions ADD COLUMN phone_number TEXT",
+		"ALTER TABLE contributions ADD COLUMN mpesa_receipt_number TEXT",
 
 		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
 

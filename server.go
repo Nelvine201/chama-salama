@@ -463,16 +463,15 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		phone := strings.TrimSpace(r.FormValue("phone"))
+		phone, validPhone := normalizeKenyanPhone(r.FormValue("phone"))
+		if !validPhone {
+			http.Error(w, "Enter a valid Kenyan phone number", http.StatusBadRequest)
+			return
+		}
 		amountStr := r.FormValue("amount")
 		amount, err := strconv.Atoi(amountStr)
 		if err != nil || amount <= 0 {
 			http.Error(w, "Amount must be a positive whole number", http.StatusBadRequest)
-			return
-		}
-
-		if !isValidKenyanPhone(phone) {
-			http.Error(w, "Enter a valid Kenyan phone number", http.StatusBadRequest)
 			return
 		}
 
@@ -503,6 +502,7 @@ func startServer(db *sql.DB) {
 			chamaID,
 			cycleID,
 			float64(amount),
+			phone,
 			stkResp.CheckoutRequestID,
 		)
 		if err != nil {

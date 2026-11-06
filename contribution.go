@@ -153,12 +153,13 @@ func RecordPendingSTKContribution(
 	db *sql.DB,
 	memberID, chamaID, cycleID int64,
 	amount float64,
+	phone string,
 	checkoutRequestID string,
 ) (int64, error) {
 	result, err := db.Exec(
 		`INSERT INTO contributions
-		(member_id, chama_id, cycle_id, amount, paid_on, source, status, checkout_request_id)
-		VALUES (?, ?, ?, ?, DATE('now'), ?, ?, ?)`,
+    (member_id, chama_id, cycle_id, amount, paid_on, source, status, checkout_request_id, phone_number)
+    VALUES (?, ?, ?, ?, DATE('now'), ?, ?, ?, ?)`,
 		memberID,
 		chamaID,
 		cycleID,
@@ -166,6 +167,7 @@ func RecordPendingSTKContribution(
 		"mpesa",
 		"pending",
 		checkoutRequestID,
+		phone,
 	)
 	if err != nil {
 		return 0, err
