@@ -328,6 +328,36 @@ func validateChamaActivation(q chamaActivationQuerier, chamaID int64) error {
 		return fmt.Errorf("active membership exceeds the maximum participants")
 	}
 
+	// All invitations must be resolved before activation.
+	var pendingInvitations int
+	err = q.QueryRow(`
+	SELECT COUNT(*)
+	FROM chama_members
+	WHERE chama_id = ? AND status = 'pending'
+`, chamaID).Scan(&pendingInvitations)
+	if err != nil {
+		return err
+	}
+
+	if pendingInvitations > 0 {
+		return fmt.Errorf("all pending invitations must be resolved before activation")
+	}
+
+	// All join requests must be reviewed before activation.
+	var pendingJoinRequests int
+	err = q.QueryRow(`
+	SELECT COUNT(*)
+	FROM chama_join_requests
+	WHERE chama_id = ? AND status = 'pending'
+`, chamaID).Scan(&pendingJoinRequests)
+	if err != nil {
+		return err
+	}
+
+	if pendingJoinRequests > 0 {
+		return fmt.Errorf("all pending join requests must be reviewed before activation")
+	}
+
 	return nil
 }
 
