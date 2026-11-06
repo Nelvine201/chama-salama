@@ -263,6 +263,21 @@ func ReviewJoinRequest(db *sql.DB, requestID, reviewerID int64, approve bool) er
 		if maxParticipants > 0 && activeMembers >= maxParticipants {
 			return fmt.Errorf("the chama is now full")
 		}
+		var existingMembership int
+		err = tx.QueryRow(`
+    SELECT COUNT(*)
+    FROM chama_members
+    WHERE chama_id = ?
+      AND member_id = ?
+      AND status IN ('active', 'pending')
+`, chamaID, applicantID).Scan(&existingMembership)
+		if err != nil {
+			return err
+		}
+
+		if existingMembership > 0 {
+			return fmt.Errorf("applicant already has a membership or pending invitation")
+		}
 		newStatus = "approved"
 		title = "You have been approved"
 		message = "Your request to join the chama has been approved."
