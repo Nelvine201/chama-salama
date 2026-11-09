@@ -321,6 +321,12 @@ func startServer(db *sql.DB) {
 				StkCallback struct {
 					CheckoutRequestID string `json:"CheckoutRequestID"`
 					ResultCode        *int   `json:"ResultCode"`
+					CallbackMetadata  struct {
+						Items []struct {
+							Name  string      `json:"Name"`
+							Value interface{} `json:"Value"`
+						} `json:"Item"`
+					} `json:"CallbackMetadata"`
 				} `json:"stkCallback"`
 			} `json:"Body"`
 		}
@@ -344,11 +350,45 @@ func startServer(db *sql.DB) {
 		}
 
 		success := *callback.ResultCode == 0
+		var amount float64
+		var phone string
+		var receipt string
+
+		if success {
+			for _, item := range callback.CallbackMetadata.Items {
+				switch item.Name {
+				case "Amount":
+					switch value := item.Value.(type) {
+					case float64:
+						amount = value
+					case int:
+						amount = float64(value)
+					}
+				case "PhoneNumber":
+					switch value := item.Value.(type) {
+					case float64:
+						phone = strconv.FormatInt(int64(value), 10)
+					case int:
+						phone = strconv.Itoa(value)
+					case string:
+						phone = value
+					}
+				case "MpesaReceiptNumber":
+					receipt = fmt.Sprint(item.Value)
+				}
+			}
+		}
 
 		// ADDED 4: Show the result code (0 means success).
 		fmt.Printf("Daraja callback result code: %d\n", *callback.ResultCode)
-
-		if err := ConfirmSTKContribution(db, callback.CheckoutRequestID, success); err != nil {
+		if err := ConfirmSTKContribution(
+			db,
+			callback.CheckoutRequestID,
+			success,
+			amount,
+			phone,
+			receipt,
+		); err != nil {
 			fmt.Println("Failed to update Daraja contribution status:", err)
 			fmt.Fprintln(w, "Callback received")
 			return
