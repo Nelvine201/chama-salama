@@ -184,17 +184,19 @@ func ConfirmSTKContribution(
 	phone string,
 	receipt string,
 ) error {
-	if strings.TrimSpace(checkoutRequestID) == "" {
+	checkoutRequestID = strings.TrimSpace(checkoutRequestID)
+	if checkoutRequestID == "" {
 		return fmt.Errorf("checkout request ID is required")
 	}
 
+	// Handle failed payment callbacks.
 	if !success {
 		result, err := db.Exec(`
-            UPDATE contributions
-            SET status = 'failed'
-            WHERE checkout_request_id = ?
-            AND status = 'pending'
-        `, checkoutRequestID)
+			UPDATE contributions
+			SET status = 'failed'
+			WHERE checkout_request_id = ?
+			AND status = 'pending'
+		`, checkoutRequestID)
 		if err != nil {
 			return err
 		}
@@ -203,13 +205,33 @@ func ConfirmSTKContribution(
 		if err != nil {
 			return err
 		}
-		if rowsAffected == 0 {
-			return fmt.Errorf("no pending contribution found for checkout request")
+
+		if rowsAffected > 0 {
+			return nil
 		}
 
-		return nil
+		// A repeated failed callback is safe.
+		var status string
+		err = db.QueryRow(`
+			SELECT status
+			FROM contributions
+			WHERE checkout_request_id = ?
+		`, checkoutRequestID).Scan(&status)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("no contribution found for checkout request")
+			}
+			return err
+		}
+
+		if status == "failed" {
+			return nil
+		}
+
+		return fmt.Errorf("contribution is already processed with status %q", status)
 	}
 
+	// Validate successful payment details.
 	if amount <= 0 {
 		return fmt.Errorf("invalid payment amount")
 	}
@@ -232,20 +254,28 @@ func ConfirmSTKContribution(
 
 	var expectedAmount float64
 	var expectedPhone string
+	var status string
+	var storedReceipt string
 
 	err = tx.QueryRow(`
-        SELECT amount, phone_number
-        FROM contributions
-        WHERE checkout_request_id = ?
-        AND status = 'pending'
-    `, checkoutRequestID).Scan(&expectedAmount, &expectedPhone)
+		SELECT amount, phone_number, status,
+		       COALESCE(mpesa_receipt_number, '')
+		FROM contributions
+		WHERE checkout_request_id = ?
+	`, checkoutRequestID).Scan(
+		&expectedAmount,
+		&expectedPhone,
+		&status,
+		&storedReceipt,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("no pending contribution found for checkout request")
+			return fmt.Errorf("no contribution found for checkout request")
 		}
 		return err
 	}
 
+	// Verify the callback against the original payment.
 	if amount != expectedAmount {
 		return fmt.Errorf("payment amount does not match pending contribution")
 	}
@@ -255,13 +285,25 @@ func ConfirmSTKContribution(
 		return fmt.Errorf("payment phone number does not match pending contribution")
 	}
 
+	// Accept an identical successful callback without updating again.
+	if status == "synced" {
+		if storedReceipt == receipt {
+			return nil
+		}
+		return fmt.Errorf("callback receipt does not match the synced contribution")
+	}
+
+	if status != "pending" {
+		return fmt.Errorf("contribution cannot be synced from status %q", status)
+	}
+
 	result, err := tx.Exec(`
-        UPDATE contributions
-        SET status = 'synced',
-            mpesa_receipt_number = ?
-        WHERE checkout_request_id = ?
-        AND status = 'pending'
-    `, receipt, checkoutRequestID)
+		UPDATE contributions
+		SET status = 'synced',
+		    mpesa_receipt_number = ?
+		WHERE checkout_request_id = ?
+		AND status = 'pending'
+	`, receipt, checkoutRequestID)
 	if err != nil {
 		return err
 	}

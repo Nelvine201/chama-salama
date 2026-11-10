@@ -151,3 +151,111 @@ func TestConfirmSTKContribution(t *testing.T) {
 		})
 	}
 }
+
+func TestConfirmSTKContributionDuplicateSuccess(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	for i := 0; i < 2; i++ {
+		err := ConfirmSTKContribution(
+			db,
+			"ws_CO_test123",
+			true,
+			100,
+			"254712345678",
+			"QGH123ABC",
+		)
+		if err != nil {
+			t.Fatalf("callback attempt %d failed: %v", i+1, err)
+		}
+	}
+
+	var status, receipt string
+	err := db.QueryRow(`
+		SELECT status, COALESCE(mpesa_receipt_number, '')
+		FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status, &receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "synced" {
+		t.Errorf("status = %q, want synced", status)
+	}
+
+	if receipt != "QGH123ABC" {
+		t.Errorf("receipt = %q, want QGH123ABC", receipt)
+	}
+}
+
+func TestConfirmSTKContributionDuplicateFailure(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	for i := 0; i < 2; i++ {
+		err := ConfirmSTKContribution(
+			db,
+			"ws_CO_test123",
+			false,
+			0,
+			"",
+			"",
+		)
+		if err != nil {
+			t.Fatalf("callback attempt %d failed: %v", i+1, err)
+		}
+	}
+
+	var status string
+	err := db.QueryRow(`
+		SELECT status FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "failed" {
+		t.Errorf("status = %q, want failed", status)
+	}
+}
+
+func TestConfirmSTKContributionRejectsConflictingReceipt(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	err := ConfirmSTKContribution(
+		db, "ws_CO_test123", true, 100,
+		"254712345678", "QGH123ABC",
+	)
+	if err != nil {
+		t.Fatalf("first callback failed: %v", err)
+	}
+
+	err = ConfirmSTKContribution(
+		db, "ws_CO_test123", true, 100,
+		"254712345678", "DIFFERENT123",
+	)
+	if err == nil {
+		t.Fatal("expected conflicting receipt to be rejected")
+	}
+
+	var status, receipt string
+	err = db.QueryRow(`
+		SELECT status, COALESCE(mpesa_receipt_number, '')
+		FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status, &receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "synced" {
+		t.Errorf("status = %q, want synced", status)
+	}
+
+	if receipt != "QGH123ABC" {
+		t.Errorf("receipt = %q, want QGH123ABC", receipt)
+	}
+}
