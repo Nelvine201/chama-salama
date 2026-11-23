@@ -27,6 +27,7 @@ type PendingWithdrawalApproval struct {
 }
 
 func startServer(db *sql.DB) {
+	startDarajaCallbackWorker(db)
 	multisigService := multisig.NewService(db)
 	registerDashboardSubpageRoutes(db)
 	http.Handle("/", http.FileServer(http.Dir("docs")))

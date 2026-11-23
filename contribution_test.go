@@ -32,6 +32,23 @@ func setupContributionDB(t *testing.T) *sql.DB {
 			mpesa_receipt_number TEXT
 		)
 	`)
+	_, err = db.Exec(`
+			CREATE TABLE daraja_callback_queue (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				checkout_request_id TEXT NOT NULL UNIQUE,
+				payload TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'pending',
+				attempts INTEGER NOT NULL DEFAULT 0,
+				last_error TEXT,
+				received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				processed_at DATETIME
+			)
+		`)
+	if err != nil {
+		db.Close()
+		t.Fatal(err)
+	}
+
 	if err != nil {
 		db.Close()
 		t.Fatal(err)
