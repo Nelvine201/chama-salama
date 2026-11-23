@@ -57,6 +57,7 @@ func darajaCallbackHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		success := *callback.ResultCode == 0
+
 		var amount float64
 		var phone string
 		var receipt string
@@ -71,6 +72,7 @@ func darajaCallbackHandler(db *sql.DB) http.HandlerFunc {
 					case int:
 						amount = float64(value)
 					}
+
 				case "PhoneNumber":
 					switch value := item.Value.(type) {
 					case float64:
@@ -78,11 +80,21 @@ func darajaCallbackHandler(db *sql.DB) http.HandlerFunc {
 					case int:
 						phone = strconv.Itoa(value)
 					case string:
-						phone = value
+						phone = strings.TrimSpace(value)
 					}
+
 				case "MpesaReceiptNumber":
-					receipt = fmt.Sprint(item.Value)
+					if value, ok := item.Value.(string); ok {
+						receipt = strings.TrimSpace(value)
+					}
 				}
+			}
+
+			// Do not process successful callbacks with incomplete metadata.
+			if amount <= 0 || phone == "" || receipt == "" {
+				fmt.Println("Daraja callback rejected: incomplete or invalid payment metadata")
+				fmt.Fprintln(w, "Callback received")
+				return
 			}
 		}
 
