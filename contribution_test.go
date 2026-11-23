@@ -32,6 +32,23 @@ func setupContributionDB(t *testing.T) *sql.DB {
 			mpesa_receipt_number TEXT
 		)
 	`)
+	_, err = db.Exec(`
+			CREATE TABLE daraja_callback_queue (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				checkout_request_id TEXT NOT NULL UNIQUE,
+				payload TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'pending',
+				attempts INTEGER NOT NULL DEFAULT 0,
+				last_error TEXT,
+				received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				processed_at DATETIME
+			)
+		`)
+	if err != nil {
+		db.Close()
+		t.Fatal(err)
+	}
+
 	if err != nil {
 		db.Close()
 		t.Fatal(err)
@@ -149,5 +166,113 @@ func TestConfirmSTKContribution(t *testing.T) {
 				t.Errorf("receipt = %q, want %q", receipt, tt.wantReceipt)
 			}
 		})
+	}
+}
+
+func TestConfirmSTKContributionDuplicateSuccess(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	for i := 0; i < 2; i++ {
+		err := ConfirmSTKContribution(
+			db,
+			"ws_CO_test123",
+			true,
+			100,
+			"254712345678",
+			"QGH123ABC",
+		)
+		if err != nil {
+			t.Fatalf("callback attempt %d failed: %v", i+1, err)
+		}
+	}
+
+	var status, receipt string
+	err := db.QueryRow(`
+		SELECT status, COALESCE(mpesa_receipt_number, '')
+		FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status, &receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "synced" {
+		t.Errorf("status = %q, want synced", status)
+	}
+
+	if receipt != "QGH123ABC" {
+		t.Errorf("receipt = %q, want QGH123ABC", receipt)
+	}
+}
+
+func TestConfirmSTKContributionDuplicateFailure(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	for i := 0; i < 2; i++ {
+		err := ConfirmSTKContribution(
+			db,
+			"ws_CO_test123",
+			false,
+			0,
+			"",
+			"",
+		)
+		if err != nil {
+			t.Fatalf("callback attempt %d failed: %v", i+1, err)
+		}
+	}
+
+	var status string
+	err := db.QueryRow(`
+		SELECT status FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "failed" {
+		t.Errorf("status = %q, want failed", status)
+	}
+}
+
+func TestConfirmSTKContributionRejectsConflictingReceipt(t *testing.T) {
+	db := setupContributionDB(t)
+	insertPendingContribution(t, db)
+
+	err := ConfirmSTKContribution(
+		db, "ws_CO_test123", true, 100,
+		"254712345678", "QGH123ABC",
+	)
+	if err != nil {
+		t.Fatalf("first callback failed: %v", err)
+	}
+
+	err = ConfirmSTKContribution(
+		db, "ws_CO_test123", true, 100,
+		"254712345678", "DIFFERENT123",
+	)
+	if err == nil {
+		t.Fatal("expected conflicting receipt to be rejected")
+	}
+
+	var status, receipt string
+	err = db.QueryRow(`
+		SELECT status, COALESCE(mpesa_receipt_number, '')
+		FROM contributions
+		WHERE checkout_request_id = ?
+	`, "ws_CO_test123").Scan(&status, &receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != "synced" {
+		t.Errorf("status = %q, want synced", status)
+	}
+
+	if receipt != "QGH123ABC" {
+		t.Errorf("receipt = %q, want QGH123ABC", receipt)
 	}
 }

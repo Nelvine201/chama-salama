@@ -29,6 +29,21 @@ CREATE TABLE IF NOT EXISTS sync_queue (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (contribution_id) REFERENCES contributions(id)
 );
+CREATE TABLE IF NOT EXISTS daraja_callback_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checkout_request_id TEXT NOT NULL UNIQUE,
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME
+);
+
+CREATE INDEX IF NOT EXISTS idx_daraja_callback_queue_status
+ON daraja_callback_queue(status);
+
+
 CREATE TABLE IF NOT EXISTS group_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chama_id INTEGER NOT NULL,
