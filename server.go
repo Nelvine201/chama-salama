@@ -399,67 +399,6 @@ func startServer(db *sql.DB) {
 
 		fmt.Fprintln(w, "Callback received")
 	})
-	http.HandleFunc("/simulate-payment", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POST required", http.StatusMethodNotAllowed)
-			return
-		}
-
-		if os.Getenv("MPESA_SIMULATION_ENABLED") != "true" {
-			http.Error(w, "Payment simulation is disabled", http.StatusForbidden)
-			return
-		}
-
-		memberID, err := getLoggedInMemberID(r, db)
-		if err != nil {
-			http.Redirect(w, r, "/login-page", http.StatusSeeOther)
-			return
-		}
-
-		chamaID, err := strconv.ParseInt(r.FormValue("chama_id"), 10, 64)
-		if err != nil || chamaID <= 0 {
-			http.Error(w, "Invalid chama ID", http.StatusBadRequest)
-			return
-		}
-
-		if _, err := requireChamaRole(db, r, chamaID, "member", "admin", "treasurer"); err != nil {
-			http.Error(w, "Active Chama membership required", http.StatusForbidden)
-			return
-		}
-		lifecycleStatus, err := GetChamaLifecycleStatus(db, chamaID)
-		if err != nil {
-			http.Error(w, "Could not verify Chama status", http.StatusInternalServerError)
-			return
-		}
-
-		if !strings.EqualFold(lifecycleStatus, "active") {
-			http.Error(w, "Cannot simulate payments for a Chama that is still forming", http.StatusConflict)
-			return
-		}
-
-		amount, err := strconv.ParseFloat(r.FormValue("amount"), 64)
-		if err != nil || amount <= 0 {
-			http.Error(w, "Invalid amount", http.StatusBadRequest)
-			return
-		}
-
-		payment := SimulatedPayment{
-			Phone:    r.FormValue("phone"),
-			Amount:   amount,
-			ChamaID:  chamaID,
-			MemberID: memberID,
-			Outcome:  r.FormValue("outcome"),
-		}
-
-		id, err := SimulateMPesaPayment(db, payment)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		fmt.Fprintf(w, "Simulation recorded. Reference: SIM-%d. Outcome: %s", id, payment.Outcome)
-	})
-
 	http.HandleFunc("/stk-push", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			fmt.Fprintln(w, "Please submit this form using POST")
