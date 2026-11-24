@@ -17,14 +17,7 @@ func CreateChama(db *sql.DB, name string, createdBy int64) (int64, error) {
 	if name == "" {
 		return 0, fmt.Errorf("chama name is required")
 	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	result, err := tx.Exec(
+	result, err := db.Exec(
 		"INSERT INTO chamas (name, created_by, lifecycle_status) VALUES (?, ?, 'forming')",
 		name, createdBy,
 	)
@@ -37,15 +30,11 @@ func CreateChama(db *sql.DB, name string, createdBy int64) (int64, error) {
 		return 0, err
 	}
 
-	_, err = tx.Exec(
+	_, err = db.Exec(
 		"INSERT INTO chama_members (chama_id, member_id, role) VALUES (?, ?, ?)",
 		chamaID, createdBy, "admin",
 	)
 	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 
