@@ -22,7 +22,7 @@ func main() {
 		db, err = sql.Open("libsql", dbURL)
 		fmt.Println("Using Turso database")
 	} else {
-		db, err = sql.Open("sqlite", "chama.db")
+		db, err = sql.Open("sqlite", "file:chama.db?_pragma=foreign_keys=on")
 		fmt.Println("Using local SQLite database")
 	}
 	if err != nil {
