@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
@@ -30,8 +29,7 @@ func main() {
 	}
 	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
+	if err := db.Ping(); err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	fmt.Println("Successfully connected to database!")
@@ -40,137 +38,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to read schema.sql:", err)
 	}
-	for _, stmt := range strings.Split(string(schema), ";") {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
-		}
-
-		if _, err = db.Exec(stmt); err != nil {
-			log.Fatalf("Failed to apply schema statement:\n%s\nError: %v", stmt, err)
-		}
+	if err := migrateDatabase(db, string(schema)); err != nil {
+		log.Fatal("Failed to migrate database:", err)
 	}
-	fmt.Println("Database schema ensured.")
-
-	newColumns := []string{
-		"ALTER TABLE members ADD COLUMN avatar_url TEXT",
-		"ALTER TABLE members ADD COLUMN preferred_first_name TEXT",
-		"ALTER TABLE members ADD COLUMN default_payout_method TEXT",
-		"ALTER TABLE members ADD COLUMN next_of_kin_relationship TEXT",
-		"ALTER TABLE members ADD COLUMN next_of_kin_id_number TEXT",
-		"ALTER TABLE members ADD COLUMN next_of_kin_phone TEXT",
-		"ALTER TABLE members ADD COLUMN notify_sms INTEGER DEFAULT 1",
-		"ALTER TABLE members ADD COLUMN notify_email INTEGER DEFAULT 1",
-
-		"ALTER TABLE chamas ADD COLUMN description TEXT",
-		"ALTER TABLE chamas ADD COLUMN start_date TEXT",
-		"ALTER TABLE chamas ADD COLUMN max_participants INTEGER",
-		"ALTER TABLE chamas ADD COLUMN lifecycle_status TEXT NOT NULL DEFAULT 'active'",
-		"ALTER TABLE cycles ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
-		"ALTER TABLE cycles ADD COLUMN completed_at DATETIME",
-
-		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
-
-		"ALTER TABLE contributions ADD COLUMN chama_id INTEGER",
-		"ALTER TABLE contributions ADD COLUMN checkout_request_id TEXT",
-		"ALTER TABLE contributions ADD COLUMN cycle_id INTEGER",
-		"ALTER TABLE contributions ADD COLUMN phone_number TEXT",
-		"ALTER TABLE contributions ADD COLUMN mpesa_receipt_number TEXT",
-
-		"ALTER TABLE withdrawals ADD COLUMN chama_id INTEGER",
-
-		"ALTER TABLE withdrawal_approvals ADD COLUMN approver_role TEXT DEFAULT 'MEMBER'",
-		"ALTER TABLE withdrawal_approvals ADD COLUMN status TEXT DEFAULT 'SIGNED'",
-		"ALTER TABLE withdrawal_approvals ADD COLUMN signed_at DATETIME",
-
-		"ALTER TABLE group_settings ADD COLUMN chama_id INTEGER",
-		"ALTER TABLE group_settings ADD COLUMN payout_position INTEGER DEFAULT 0",
-		"ALTER TABLE group_settings ADD COLUMN next_payout_date TEXT",
-		"ALTER TABLE group_settings ADD COLUMN number_of_rounds INTEGER DEFAULT 1",
-		"ALTER TABLE group_settings ADD COLUMN payout_method TEXT DEFAULT 'fixed_rotation'",
-		"ALTER TABLE group_settings ADD COLUMN grace_period_days INTEGER DEFAULT 0",
-		"ALTER TABLE group_settings ADD COLUMN late_penalty_type TEXT DEFAULT 'none'",
-		"ALTER TABLE group_settings ADD COLUMN late_penalty_amount REAL DEFAULT 0",
-		"ALTER TABLE group_settings ADD COLUMN welfare_reserve_amount REAL DEFAULT 0",
-		"ALTER TABLE group_settings ADD COLUMN approval_threshold INTEGER DEFAULT 1",
-		"ALTER TABLE group_settings ADD COLUMN payout_destination_type TEXT",
-		"ALTER TABLE group_settings ADD COLUMN paybill_number TEXT",
-		"ALTER TABLE group_settings ADD COLUMN till_number TEXT",
-		"ALTER TABLE group_settings ADD COLUMN treasurer_phone TEXT",
-		"ALTER TABLE group_settings ADD COLUMN treasurer_account_name TEXT",
-	}
-	for _, stmt := range newColumns {
-		_, err := db.Exec(stmt)
-		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
-			log.Fatal("Failed to add column:", err)
-		}
-	}
-	if _, err := db.Exec(`
-    UPDATE group_settings
-    SET payout_method = 'fixed_rotation'
-    WHERE payout_method IS NULL OR payout_method <> 'fixed_rotation'
-	`); err != nil {
-		log.Fatal("Failed to enforce fixed rotation:", err)
-	}
-	fmt.Println("Profile system columns ensured.")
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS chama_join_requests (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		chama_id INTEGER NOT NULL,
-		member_id INTEGER NOT NULL,
-		phone TEXT NOT NULL,
-		note TEXT,
-		agreed_to_rules INTEGER NOT NULL DEFAULT 0,
-		status TEXT NOT NULL DEFAULT 'pending',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		reviewed_at DATETIME,
-		reviewed_by INTEGER
-	)`)
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS notifications (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		member_id INTEGER NOT NULL,
-		title TEXT NOT NULL,
-		message TEXT NOT NULL,
-		type TEXT NOT NULL DEFAULT 'system',
-		reference_id INTEGER,
-		read_at DATETIME,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-	_, _ = db.Exec("ALTER TABLE notifications ADD COLUMN reference_id INTEGER")
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS audit_events (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		chama_id INTEGER NOT NULL,
-		member_id INTEGER,
-		event TEXT NOT NULL,
-		details TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-
-	var chamaCount int
-	db.QueryRow("SELECT COUNT(*) FROM chamas").Scan(&chamaCount)
-	if chamaCount == 0 {
-		var firstMemberID int64
-		err := db.QueryRow("SELECT id FROM members ORDER BY id LIMIT 1").Scan(&firstMemberID)
-		if err == nil {
-			result, err := db.Exec("INSERT INTO chamas (name, created_by) VALUES (?, ?)", "Chama Salama", firstMemberID)
-			if err == nil {
-				chamaID, _ := result.LastInsertId()
-				db.Exec(
-					`INSERT INTO chama_members (chama_id, member_id, role)
-					 SELECT ?, id, role FROM members WHERE id NOT IN (SELECT member_id FROM chama_members WHERE chama_id = ?)`,
-					chamaID, chamaID,
-				)
-				fmt.Println("Default chama created and existing members attached.")
-			}
-		}
-	}
-	var defaultChamaID int64
-	db.QueryRow("SELECT id FROM chamas ORDER BY id LIMIT 1").Scan(&defaultChamaID)
-	if defaultChamaID != 0 {
-		db.Exec("UPDATE contributions SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
-		db.Exec("UPDATE group_settings SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
-		db.Exec("UPDATE withdrawals SET chama_id = ? WHERE chama_id IS NULL", defaultChamaID)
-		fmt.Println("Backfilled chama_id for existing records.")
-	}
+	fmt.Println("Database schema and migrations ensured.")
 
 	startServer(db)
 }
