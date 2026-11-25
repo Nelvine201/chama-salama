@@ -57,8 +57,8 @@ var databaseColumnMigrations = []columnMigration{
 }
 
 // migrateDatabase applies schema changes and data backfills as one transaction.
-// Re-running it is safe: tables, indexes, and columns are created only when missing,
-// and existing records are updated only where their migrated values are absent.
+// Re-running it is safe: tables, indexes, and columns are created only when missing.
+// The fixed-rotation update preserves the application's existing payout policy.
 func migrateDatabase(db *sql.DB, schema string) error {
 	tx, err := db.Begin()
 	if err != nil {
