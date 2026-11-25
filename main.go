@@ -98,7 +98,6 @@ func main() {
 		"ALTER TABLE group_settings ADD COLUMN till_number TEXT",
 		"ALTER TABLE group_settings ADD COLUMN treasurer_phone TEXT",
 		"ALTER TABLE group_settings ADD COLUMN treasurer_account_name TEXT",
-		"ALTER TABLE chama_members ADD COLUMN status TEXT DEFAULT 'active'",
 	}
 	for _, stmt := range newColumns {
 		_, err := db.Exec(stmt)
