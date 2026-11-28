@@ -276,3 +276,77 @@ func TestConfirmSTKContributionRejectsConflictingReceipt(t *testing.T) {
 		t.Errorf("receipt = %q, want QGH123ABC", receipt)
 	}
 }
+
+func TestCreatePendingSTKContributionAndAttachCheckoutID(t *testing.T) {
+	db := setupContributionDB(t)
+
+	id, err := CreatePendingSTKContribution(db, 1, 2, 3, 100, "0712345678")
+	if err != nil {
+		t.Fatalf("create pending contribution: %v", err)
+	}
+
+	var status, phone string
+	var checkoutID sql.NullString
+	if err := db.QueryRow(`
+		SELECT status, phone_number, checkout_request_id
+		FROM contributions WHERE id = ?
+	`, id).Scan(&status, &phone, &checkoutID); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" || phone != "254712345678" || checkoutID.Valid {
+		t.Fatalf("unexpected initial contribution: status=%q phone=%q checkoutID=%v", status, phone, checkoutID)
+	}
+
+	if err := AttachSTKCheckoutRequestID(db, id, "ws_CO_attached"); err != nil {
+		t.Fatalf("attach checkout ID: %v", err)
+	}
+
+	if err := AttachSTKCheckoutRequestID(db, id, "ws_CO_second"); err == nil {
+		t.Fatal("expected a second checkout ID attachment to be rejected")
+	}
+
+	if err := ConfirmSTKContribution(db, "ws_CO_attached", true, 100, "254712345678", "QGH123ABC"); err != nil {
+		t.Fatalf("confirm attached contribution: %v", err)
+	}
+
+	var gotStatus, receipt string
+	if err := db.QueryRow(`
+		SELECT status, mpesa_receipt_number FROM contributions WHERE id = ?
+	`, id).Scan(&gotStatus, &receipt); err != nil {
+		t.Fatal(err)
+	}
+	if gotStatus != "synced" || receipt != "QGH123ABC" {
+		t.Fatalf("got status=%q receipt=%q; want synced/QGH123ABC", gotStatus, receipt)
+	}
+}
+
+func TestMarkSTKContributionFailedOnlyBeforeCheckoutID(t *testing.T) {
+	db := setupContributionDB(t)
+
+	id, err := CreatePendingSTKContribution(db, 1, 2, 3, 100, "0712345678")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MarkSTKContributionFailed(db, id); err != nil {
+		t.Fatalf("mark rejected attempt failed: %v", err)
+	}
+
+	var status string
+	if err := db.QueryRow("SELECT status FROM contributions WHERE id = ?", id).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != "failed" {
+		t.Fatalf("status = %q, want failed", status)
+	}
+
+	id, err = CreatePendingSTKContribution(db, 1, 2, 3, 100, "0712345678")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := AttachSTKCheckoutRequestID(db, id, "ws_CO_accepted"); err != nil {
+		t.Fatal(err)
+	}
+	if err := MarkSTKContributionFailed(db, id); err == nil {
+		t.Fatal("must not mark an accepted payment attempt failed")
+	}
+}
