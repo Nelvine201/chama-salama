@@ -365,27 +365,43 @@ func startServer(db *sql.DB) {
 			return
 		}
 
-		stkResp, err := sendStkPush(token, phone, amount)
-		if err != nil {
-			fmt.Fprintln(w, "STK push failed:", err)
-			return
-		}
-
-		if stkResp.ResponseCode != "0" {
-			fmt.Fprintln(w, "STK push rejected:", stkResp.ResponseDescription)
-			return
-		}
-		_, err = RecordPendingSTKContribution(
+		contributionID, err := CreatePendingSTKContribution(
 			db,
 			memberID,
 			chamaID,
 			cycleID,
 			float64(amount),
 			phone,
-			stkResp.CheckoutRequestID,
 		)
 		if err != nil {
-			fmt.Fprintln(w, "Failed to save pending contribution:", err)
+			http.Error(w, "Could not create pending contribution", http.StatusInternalServerError)
+			return
+		}
+
+		stkResp, err := sendStkPush(token, phone, amount)
+		if err != nil {
+			// A transport or response error can be ambiguous: Daraja may have
+			// accepted the request even if this application did not receive
+			// its response. Keep the attempt pending for reconciliation.
+			fmt.Fprintln(w, "M-Pesa request status is unknown. Your payment attempt has been recorded; please contact support before retrying.")
+			return
+		}
+
+		if stkResp.ResponseCode != "0" {
+			if markErr := MarkSTKContributionFailed(db, contributionID); markErr != nil {
+				fmt.Println("Failed to mark rejected STK contribution:", markErr)
+			}
+			fmt.Fprintln(w, "STK push rejected:", stkResp.ResponseDescription)
+			return
+		}
+
+		if strings.TrimSpace(stkResp.CheckoutRequestID) == "" {
+			fmt.Fprintln(w, "Daraja accepted the request but returned no checkout ID. The payment attempt remains pending for investigation.")
+			return
+		}
+
+		if err := AttachSTKCheckoutRequestID(db, contributionID, stkResp.CheckoutRequestID); err != nil {
+			fmt.Fprintln(w, "Daraja accepted the request, but its checkout ID could not be saved. The payment attempt remains pending; please contact support before retrying.")
 			return
 		}
 

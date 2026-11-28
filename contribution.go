@@ -149,31 +149,87 @@ func GetRecentContributions(db *sql.DB, limit int) ([]ContributionWithMember, er
 	return results, nil
 }
 
-func RecordPendingSTKContribution(
+func CreatePendingSTKContribution(
 	db *sql.DB,
 	memberID, chamaID, cycleID int64,
 	amount float64,
 	phone string,
-	checkoutRequestID string,
 ) (int64, error) {
+	if amount <= 0 {
+		return 0, fmt.Errorf("amount must be greater than zero")
+	}
+
+	normalizedPhone, valid := normalizeKenyanPhone(phone)
+	if !valid {
+		return 0, fmt.Errorf("invalid Kenyan phone number")
+	}
+
 	result, err := db.Exec(
 		`INSERT INTO contributions
-    (member_id, chama_id, cycle_id, amount, paid_on, source, status, checkout_request_id, phone_number)
-    VALUES (?, ?, ?, ?, DATE('now'), ?, ?, ?, ?)`,
+		(member_id, chama_id, cycle_id, amount, paid_on, source, status, phone_number)
+		VALUES (?, ?, ?, ?, DATE('now'), 'mpesa', 'pending', ?)`,
 		memberID,
 		chamaID,
 		cycleID,
 		amount,
-		"mpesa",
-		"pending",
-		checkoutRequestID,
-		phone,
+		normalizedPhone,
 	)
 	if err != nil {
 		return 0, err
 	}
 
 	return result.LastInsertId()
+}
+
+func AttachSTKCheckoutRequestID(db *sql.DB, contributionID int64, checkoutRequestID string) error {
+	checkoutRequestID = strings.TrimSpace(checkoutRequestID)
+	if contributionID <= 0 || checkoutRequestID == "" {
+		return fmt.Errorf("contribution ID and checkout request ID are required")
+	}
+
+	result, err := db.Exec(`
+		UPDATE contributions
+		SET checkout_request_id = ?
+		WHERE id = ?
+		  AND status = 'pending'
+		  AND checkout_request_id IS NULL
+	`, checkoutRequestID, contributionID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return fmt.Errorf("pending contribution not found or checkout request ID already assigned")
+	}
+
+	return nil
+}
+
+func MarkSTKContributionFailed(db *sql.DB, contributionID int64) error {
+	result, err := db.Exec(`
+		UPDATE contributions
+		SET status = 'failed'
+		WHERE id = ?
+		  AND status = 'pending'
+		  AND checkout_request_id IS NULL
+	`, contributionID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return fmt.Errorf("unmatched pending contribution could not be marked failed")
+	}
+
+	return nil
 }
 
 func ConfirmSTKContribution(
